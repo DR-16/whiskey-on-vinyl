@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@300;400;600&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=4" />
+  <link rel="stylesheet" href="styles.css?v=5" />
 </head>
 <body>
 
@@ -45,6 +45,31 @@
         <div class="vinyl">
           <div class="vinyl-disc"></div>
           <svg class="vinyl-clock" viewBox="-100 -100 200 200" aria-hidden="true" preserveAspectRatio="xMidYMid meet">
+            <defs>
+              <!-- shaft: horizontal cylindrical gradient (dark edge → bright stripe → dark edge) -->
+              <linearGradient id="shaftGrad" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%"   stop-color="#5b3818"/>
+                <stop offset="22%"  stop-color="#a87a4a"/>
+                <stop offset="46%"  stop-color="#f3d7a4"/>
+                <stop offset="70%"  stop-color="#b7884e"/>
+                <stop offset="100%" stop-color="#4a2c10"/>
+              </linearGradient>
+              <!-- bowl: off-center radial gradient for 3D teardrop -->
+              <radialGradient id="bowlGrad" cx="0.32" cy="0.32" r="0.85">
+                <stop offset="0%"   stop-color="#fbe9bb"/>
+                <stop offset="22%"  stop-color="#e6c189"/>
+                <stop offset="55%"  stop-color="#b7884e"/>
+                <stop offset="100%" stop-color="#3d260f"/>
+              </radialGradient>
+              <!-- cap: same cylinder feel, narrower -->
+              <linearGradient id="capGrad" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%"   stop-color="#5b3818"/>
+                <stop offset="35%"  stop-color="#e6c189"/>
+                <stop offset="70%"  stop-color="#b7884e"/>
+                <stop offset="100%" stop-color="#4a2c10"/>
+              </linearGradient>
+            </defs>
+
             <g class="clock-numerals">
               <text x="0"      y="-78"   text-anchor="middle" dominant-baseline="central">XII</text>
               <text x="39"     y="-67.5" text-anchor="middle" dominant-baseline="central">I</text>
@@ -60,27 +85,37 @@
               <text x="-39"    y="-67.5" text-anchor="middle" dominant-baseline="central">XI</text>
             </g>
 
-            <!-- hour hand: bar spoon (调酒长匙) — slim teardrop bowl + finely twisted shaft + tapered cap -->
+            <!-- hour hand: bar spoon (调酒长匙) — realistic 3D twisted brass -->
             <g class="clock-hand clock-hand--hour" id="handHour">
-              <!-- thin cylindrical shaft -->
-              <line class="spoon-shaft" x1="0" y1="-10" x2="0" y2="-46"/>
-              <!-- twist: evenly spaced diagonal facets along one helical direction -->
-              <g class="spoon-twist-group">
-                <line x1="-2.2" y1="-13" x2="2.2" y2="-15"/>
-                <line x1="-2.2" y1="-17" x2="2.2" y2="-19"/>
-                <line x1="-2.2" y1="-21" x2="2.2" y2="-23"/>
-                <line x1="-2.2" y1="-25" x2="2.2" y2="-27"/>
-                <line x1="-2.2" y1="-29" x2="2.2" y2="-31"/>
-                <line x1="-2.2" y1="-33" x2="2.2" y2="-35"/>
-                <line x1="-2.2" y1="-37" x2="2.2" y2="-39"/>
-                <line x1="-2.2" y1="-41" x2="2.2" y2="-43"/>
+              <!-- shaft: cylindrical body filled with horizontal brass gradient -->
+              <rect class="shaft-body" x="-2.6" y="-46" width="5.2" height="36" rx="0.6"/>
+              <!-- spiral grooves: each is a dark notch + thin bright highlight, forming helical facets -->
+              <g class="shaft-grooves">
+                <line class="groove-dark"  x1="-2.6" y1="-13" x2="2.6" y2="-15"/>
+                <line class="groove-light" x1="-2.6" y1="-12.1" x2="2.6" y2="-14.1"/>
+                <line class="groove-dark"  x1="-2.6" y1="-17" x2="2.6" y2="-19"/>
+                <line class="groove-light" x1="-2.6" y1="-16.1" x2="2.6" y2="-18.1"/>
+                <line class="groove-dark"  x1="-2.6" y1="-21" x2="2.6" y2="-23"/>
+                <line class="groove-light" x1="-2.6" y1="-20.1" x2="2.6" y2="-22.1"/>
+                <line class="groove-dark"  x1="-2.6" y1="-25" x2="2.6" y2="-27"/>
+                <line class="groove-light" x1="-2.6" y1="-24.1" x2="2.6" y2="-26.1"/>
+                <line class="groove-dark"  x1="-2.6" y1="-29" x2="2.6" y2="-31"/>
+                <line class="groove-light" x1="-2.6" y1="-28.1" x2="2.6" y2="-30.1"/>
+                <line class="groove-dark"  x1="-2.6" y1="-33" x2="2.6" y2="-35"/>
+                <line class="groove-light" x1="-2.6" y1="-32.1" x2="2.6" y2="-34.1"/>
+                <line class="groove-dark"  x1="-2.6" y1="-37" x2="2.6" y2="-39"/>
+                <line class="groove-light" x1="-2.6" y1="-36.1" x2="2.6" y2="-38.1"/>
+                <line class="groove-dark"  x1="-2.6" y1="-41" x2="2.6" y2="-43"/>
+                <line class="groove-light" x1="-2.6" y1="-40.1" x2="2.6" y2="-42.1"/>
               </g>
-              <!-- elongated teardrop bowl at the tip (pointed outward, rounded at shaft join) -->
-              <path class="spoon-cup" d="M 0 -64 C -7 -60, -7 -48, 0 -46 C 7 -48, 7 -60, 0 -64 Z"/>
-              <!-- glossy highlight on the bowl -->
-              <path class="spoon-cup-shine" d="M -2.6 -50 Q -3 -56 -0.5 -60"/>
-              <!-- tapered teardrop cap at the back -->
-              <path class="spoon-cap" d="M 0 7 C -2.6 8, -2.6 13, 0 14.5 C 2.6 13, 2.6 8, 0 7 Z"/>
+              <!-- elongated teardrop bowl (3D shaded) -->
+              <path class="bowl-body" d="M 0 -64 C -7 -60, -7 -48, 0 -46 C 7 -48, 7 -60, 0 -64 Z"/>
+              <!-- bowl highlight + rim shadow for volume -->
+              <path class="bowl-highlight" d="M -2.5 -50 Q -3.7 -56 -0.8 -61.5"/>
+              <path class="bowl-rim"       d="M 4.3 -58 Q 4.6 -52 2.3 -47.8"/>
+              <!-- balance cap: tapered cylinder, same brass treatment -->
+              <path class="cap-body" d="M 0 7 C -2.8 8, -2.8 13.5, 0 15 C 2.8 13.5, 2.8 8, 0 7 Z"/>
+              <line class="cap-highlight" x1="-1.1" y1="8.5" x2="-1.1" y2="13.5"/>
             </g>
 
             <!-- minute hand: cocktail pick (水果长签) — wooden skewer piercing an olive -->
