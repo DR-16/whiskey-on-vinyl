@@ -127,34 +127,40 @@ img { display: block; max-width: 100%; }
 .vinyl {
   position: relative; width: 78%; aspect-ratio: 1/1;
   border-radius: 50%;
-  background:
-    repeating-radial-gradient(circle at center,
-      #0a0612 0px, #0a0612 1px,
-      #1a1028 2px, #1a1028 3px);
   box-shadow:
     0 0 0 1px rgba(184,160,216,0.15),
     0 20px 50px rgba(0,0,0,0.5);
-  animation: spin 14s linear infinite;
 }
-.vinyl::after {
-  /* glossy highlight */
-  content: ""; position: absolute; inset: 0; border-radius: 50%;
-  background: conic-gradient(from 210deg,
-    transparent 0deg, rgba(184,160,216,0.08) 30deg,
-    transparent 60deg, transparent 200deg,
-    rgba(184,160,216,0.12) 230deg, transparent 260deg);
+/* spinning disc: grooves + glossy highlight + label, all together */
+.vinyl-disc {
+  position: absolute; inset: 0; border-radius: 50%;
+  background:
+    /* glossy highlight */
+    conic-gradient(from 210deg,
+      transparent 0deg, rgba(184,160,216,0.08) 30deg,
+      transparent 60deg, transparent 200deg,
+      rgba(184,160,216,0.12) 230deg, transparent 260deg),
+    /* grooves */
+    repeating-radial-gradient(circle at center,
+      #0a0612 0px, #0a0612 1px,
+      #1a1028 2px, #1a1028 3px);
+  animation: spin 14s linear infinite;
 }
 .vinyl-center {
   position: absolute; inset: 0; margin: auto;
   width: 16%; aspect-ratio: 1/1; border-radius: 50%;
   background: var(--copper);
   box-shadow: 0 0 0 4px var(--ink-2), 0 0 30px rgba(200,155,108,0.4);
+  /* rotate with the disc — the label is glued to the record */
+  animation: spin 14s linear infinite;
+  pointer-events: none;
 }
 .vinyl-center::after {
   content: ""; position: absolute; inset: 0; margin: auto;
   width: 18%; aspect-ratio: 1/1; border-radius: 50%;
   background: var(--ink-1);
 }
+/* tonearm sits ABOVE the disc and does NOT rotate */
 .vinyl-arm {
   position: absolute; top: 8%; right: 8%;
   width: 4px; height: 55%;
@@ -162,15 +168,28 @@ img { display: block; max-width: 100%; }
   transform-origin: top right; transform: rotate(28deg);
   border-radius: 2px;
   box-shadow: 0 0 12px rgba(0,0,0,0.4);
+  z-index: 2;
+}
+.vinyl-arm::before {
+  /* pivot cap at the top-right */
+  content: ""; position: absolute; top: -8px; right: -8px;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--ink-2);
+  border: 2px solid var(--smoke);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.5);
 }
 .vinyl-arm::after {
+  /* stylus tip */
   content: ""; position: absolute; bottom: -6px; left: -4px;
   width: 12px; height: 12px; border-radius: 50%;
   background: var(--copper);
+  box-shadow: 0 0 8px rgba(200,155,108,0.5);
 }
 
 @keyframes spin { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { .vinyl { animation: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .vinyl-disc, .vinyl-center { animation: none; }
+}
 
 .hero-text { color: var(--paper); }
 .hero-eyebrow {
