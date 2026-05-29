@@ -166,17 +166,54 @@ img { display: block; max-width: 100%; }
   transform-origin: 0px 0px;     /* center of the viewBox (-100..100) */
   transform-box: view-box;
   transition: transform 1.2s cubic-bezier(0.3, 0, 0.2, 1);
-  fill: var(--copper);
-  stroke: var(--copper);
   stroke-linecap: round;
+  stroke-linejoin: round;
   filter: drop-shadow(0 1px 4px rgba(0,0,0,0.6));
 }
-.clock-hand line   { stroke-width: 1.6; }
-.clock-hand--hour line { stroke-width: 2.4; }
-.clock-hand .pick-loop {
-  fill: none; stroke-width: 1.5;
+
+/* --- hour hand: bar spoon (调酒长匙) --- */
+.spoon-shaft {
+  stroke: var(--copper);
+  stroke-width: 1.6;
+  fill: none;
+  opacity: 0.55;
 }
-.clock-hand--hour .twist ellipse { stroke: none; }
+.spoon-twist {
+  stroke: var(--copper);
+  stroke-width: 1.6;
+  fill: none;
+}
+.spoon-cup { fill: var(--copper); stroke: none; }
+.spoon-cap { fill: var(--copper); stroke: none; }
+
+/* --- minute hand: cocktail pick (水果长签) — wooden skewer + olive --- */
+.pick-loop {
+  fill: none;
+  stroke: #d2b894;   /* warm wood tone */
+  stroke-width: 1.5;
+}
+.pick-stick {
+  stroke: #d2b894;
+  stroke-width: 1.6;
+  fill: none;
+}
+.pick-tip {
+  fill: #d2b894;
+  stroke: none;
+}
+.olive {
+  fill: #3a1f4e;          /* dark plum olive body */
+  stroke: #6b4a8c;        /* smoky rim */
+  stroke-width: 0.8;
+}
+.olive-highlight {
+  fill: rgba(216, 198, 232, 0.55);
+  stroke: none;
+}
+.olive-nub {
+  fill: #2a1338;
+  stroke: none;
+}
 
 /* center label sits ABOVE the clock hands — covers their pivots cleanly */
 .vinyl-center {
