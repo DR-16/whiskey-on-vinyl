@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 660" role="img" aria-label="黑胶上的威士忌">
+  <defs>
+    <style>
+      .paper { fill: #F2EBDC; }
+      .ink { fill: #0B0814; }
+      .stroke-ink { stroke: #0B0814; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+      .brush { font-family: "Ma Shan Zheng", "STKaiti", "KaiTi", "楷体", "Brush Script MT", cursive; fill: #0B0814; }
+      .mono { font-family: "Courier New", ui-monospace, monospace; fill: #0B0814; letter-spacing: 1px; }
+    </style>
+  </defs>
+
+  <!-- lemon slice peeking from top right (drawn behind polaroid) -->
+  <g transform="translate(380 0) rotate(-12)">
+    <path class="paper" d="M0 -20 Q170 -30 230 130 Q240 165 220 175 Q60 195 -10 50 Q-20 10 0 -20 Z"/>
+    <!-- rind -->
+    <path class="stroke-ink" stroke-width="4" d="M2 -16 Q170 -26 226 128"/>
+    <!-- pith arc -->
+    <path class="stroke-ink" stroke-width="2.5" d="M14 0 Q160 -10 214 130"/>
+    <!-- segments -->
+    <g class="stroke-ink" stroke-width="2.2">
+      <path d="M110 -8 Q108 70 130 168"/>
+      <path d="M70 -6 Q70 60 90 170"/>
+      <path d="M150 -10 Q155 70 170 165"/>
+      <path d="M30 0 Q40 60 55 168"/>
+      <path d="M188 -14 Q200 75 210 160"/>
+      <!-- inner segment veins -->
+      <path d="M90 30 Q98 90 110 150"/>
+      <path d="M50 40 Q60 90 75 155"/>
+      <path d="M130 30 Q140 90 150 158"/>
+      <path d="M170 25 Q180 88 188 152"/>
+    </g>
+  </g>
+
+  <!-- polaroid card -->
+  <g>
+    <rect class="paper" x="80" y="120" width="440" height="500" rx="4"/>
+
+    <!-- inner photo (black) -->
+    <rect class="ink" x="115" y="155" width="370" height="320"/>
+
+    <!-- vinyl record -->
+    <g transform="translate(300 315)">
+      <!-- outer disc -->
+      <circle cx="0" cy="0" r="140" fill="#F2EBDC"/>
+      <!-- grooves: many concentric arcs, mostly on right side to give 'half-lit' look -->
+      <g stroke="#0B0814" fill="none" stroke-width="1.4">
+        <circle cx="0" cy="0" r="134"/>
+        <circle cx="0" cy="0" r="129"/>
+        <circle cx="0" cy="0" r="124"/>
+        <circle cx="0" cy="0" r="119"/>
+        <circle cx="0" cy="0" r="114"/>
+        <circle cx="0" cy="0" r="109"/>
+        <circle cx="0" cy="0" r="104"/>
+        <circle cx="0" cy="0" r="99"/>
+        <circle cx="0" cy="0" r="94"/>
+        <circle cx="0" cy="0" r="89"/>
+        <circle cx="0" cy="0" r="84"/>
+        <circle cx="0" cy="0" r="79"/>
+        <circle cx="0" cy="0" r="74"/>
+        <circle cx="0" cy="0" r="69"/>
+        <circle cx="0" cy="0" r="64"/>
+        <circle cx="0" cy="0" r="59"/>
+        <circle cx="0" cy="0" r="54"/>
+        <circle cx="0" cy="0" r="49"/>
+        <circle cx="0" cy="0" r="44"/>
+      </g>
+      <!-- mask the left half to look like light catching the disc -->
+      <path d="M0 -140 A140 140 0 0 0 0 140 L0 -140 Z" fill="#F2EBDC"/>
+      <!-- center hole -->
+      <circle cx="0" cy="0" r="18" fill="#0B0814"/>
+    </g>
+
+    <!-- brand handwritten -->
+    <text class="brush" x="135" y="535" font-size="68">黑胶上的</text>
+
+    <!-- divider -->
+    <line x1="115" y1="558" x2="485" y2="558" stroke="#0B0814" stroke-width="2"/>
+
+    <!-- timestamps -->
+    <text class="mono" x="135" y="590" font-size="22" font-weight="700">9:00pm</text>
+    <text class="mono" x="465" y="590" font-size="22" font-weight="700" text-anchor="end">3:00am</text>
+
+    <!-- whiskey stamp -->
+    <text class="brush" x="475" y="620" font-size="26" text-anchor="end">威士忌</text>
+  </g>
+</svg>
