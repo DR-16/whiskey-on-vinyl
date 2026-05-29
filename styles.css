@@ -174,16 +174,22 @@ img { display: block; max-width: 100%; }
 /* --- hour hand: bar spoon (调酒长匙) --- */
 .spoon-shaft {
   stroke: var(--copper);
-  stroke-width: 1.6;
+  stroke-width: 1.5;
   fill: none;
-  opacity: 0.55;
 }
-.spoon-twist {
+.spoon-twist-group line {
   stroke: var(--copper);
-  stroke-width: 1.6;
-  fill: none;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  opacity: 0.9;
 }
 .spoon-cup { fill: var(--copper); stroke: none; }
+.spoon-cup-shine {
+  fill: none;
+  stroke: rgba(255, 235, 200, 0.55);
+  stroke-width: 1.1;
+  stroke-linecap: round;
+}
 .spoon-cap { fill: var(--copper); stroke: none; }
 
 /* --- minute hand: cocktail pick (水果长签) — wooden skewer + olive --- */
