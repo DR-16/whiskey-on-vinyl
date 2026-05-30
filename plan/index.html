@@ -1,0 +1,738 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>黑胶上的威士忌 · 空间平面图 v1</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@300;400;600&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink-1: #0E0716;
+      --plum: #1A0E2E;
+      --plum-2: #2D1B4E;
+      --smoke: #6B4A8C;
+      --mist: #B8A0D8;
+      --paper: #E8DDF0;
+      --paper-dim: #C4B5D4;
+      --copper: #C89B6C;
+      --rule: rgba(184,160,216,0.22);
+      --vip: rgba(120, 80, 170, 0.18);
+      --speaker: #C89B6C;
+      --brush: "Ma Shan Zheng", "STKaiti", cursive;
+      --serif: "Noto Serif SC", serif;
+      --en: "Cormorant Garamond", Georgia, serif;
+      --mono: "JetBrains Mono", ui-monospace, monospace;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0;
+      background: var(--ink-1);
+      color: var(--paper);
+      font-family: var(--serif);
+      font-weight: 300;
+      letter-spacing: 0.04em;
+    }
+    .page {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 60px 40px 80px;
+    }
+    header.top {
+      display: flex; align-items: baseline; justify-content: space-between;
+      margin-bottom: 36px;
+      border-bottom: 1px solid var(--rule);
+      padding-bottom: 18px;
+    }
+    .title {
+      font-family: var(--brush);
+      font-size: 42px;
+      letter-spacing: 0.06em;
+      color: var(--paper);
+      line-height: 1;
+      margin: 0;
+    }
+    .title-en {
+      font-family: var(--en);
+      font-style: italic;
+      font-size: 14px;
+      color: var(--paper-dim);
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      margin-top: 6px;
+    }
+    .meta {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--paper-dim);
+      letter-spacing: 0.2em;
+      text-align: right;
+    }
+    .meta div { margin: 2px 0; }
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 320px;
+      gap: 40px;
+    }
+    @media (max-width: 1000px) {
+      .layout { grid-template-columns: 1fr; }
+    }
+    .plan-wrap {
+      background: var(--plum);
+      border: 1px solid var(--rule);
+      padding: 30px;
+      position: relative;
+    }
+    svg.plan { width: 100%; height: auto; display: block; }
+    .legend {
+      font-size: 13px;
+      line-height: 1.85;
+    }
+    .legend h3 {
+      font-family: var(--brush);
+      font-size: 22px;
+      color: var(--paper);
+      letter-spacing: 0.08em;
+      margin: 28px 0 14px;
+      font-weight: 400;
+    }
+    .legend h3:first-child { margin-top: 0; }
+    .legend .swatch {
+      display: inline-block;
+      width: 16px; height: 16px;
+      vertical-align: middle;
+      margin-right: 10px;
+      border: 1px solid var(--rule);
+    }
+    .legend ul { list-style: none; padding: 0; margin: 0; }
+    .legend li { padding: 6px 0; color: var(--paper-dim); border-bottom: 1px dashed var(--rule); }
+    .legend li strong { color: var(--paper); font-weight: 400; margin-right: 6px; }
+    .legend .num {
+      display: inline-block;
+      width: 22px; height: 22px;
+      line-height: 22px;
+      text-align: center;
+      border: 1px solid var(--copper);
+      color: var(--copper);
+      font-family: var(--mono);
+      font-size: 11px;
+      margin-right: 10px;
+      border-radius: 50%;
+    }
+    /* SVG styling */
+    .wall { fill: none; stroke: var(--paper); stroke-width: 1.4; stroke-linejoin: round; }
+    .wall-inner { fill: none; stroke: var(--paper-dim); stroke-width: 0.6; }
+    .wall-pattern { stroke: var(--paper-dim); stroke-width: 0.3; opacity: 0.5; }
+    .zone-vip { fill: var(--vip); }
+    .zone-buffer { fill: rgba(184,160,216,0.05); }
+    .zone-back { fill: rgba(255,255,255,0.025); }
+    .furniture { fill: rgba(184,160,216,0.10); stroke: var(--mist); stroke-width: 0.5; }
+    .furniture-warm { fill: rgba(200,155,108,0.15); stroke: var(--copper); stroke-width: 0.5; }
+    .bar-arc { fill: rgba(200,155,108,0.18); stroke: var(--copper); stroke-width: 0.8; }
+    .speaker { fill: var(--copper); stroke: var(--copper); stroke-width: 0.4; }
+    .speaker-cone { fill: none; stroke: var(--copper); stroke-width: 0.3; stroke-dasharray: 1.5 1.5; opacity: 0.55; }
+    .sweet-spot { fill: none; stroke: var(--mist); stroke-width: 0.5; stroke-dasharray: 1 1; opacity: 0.7; }
+    .lamp { fill: var(--copper); }
+    .lamp-glow { fill: var(--copper); opacity: 0.18; }
+    .plant { fill: rgba(140, 200, 140, 0.35); stroke: rgba(140, 200, 140, 0.55); stroke-width: 0.4; }
+    .door { fill: none; stroke: var(--paper); stroke-width: 0.8; }
+    .label-zh {
+      font-family: var(--serif);
+      font-size: 2.2px;
+      fill: var(--paper);
+      font-weight: 400;
+      letter-spacing: 0.04em;
+    }
+    .label-sm {
+      font-family: var(--serif);
+      font-size: 1.6px;
+      fill: var(--paper-dim);
+    }
+    .label-num {
+      font-family: var(--mono);
+      font-size: 1.8px;
+      fill: var(--copper);
+      letter-spacing: 0.1em;
+    }
+    .label-axis {
+      font-family: var(--mono);
+      font-size: 1.5px;
+      fill: var(--paper-dim);
+      letter-spacing: 0.1em;
+    }
+    .label-en {
+      font-family: var(--en);
+      font-style: italic;
+      font-size: 1.5px;
+      fill: var(--paper-dim);
+    }
+    .grid-line { stroke: rgba(184,160,216,0.08); stroke-width: 0.15; }
+    .axis-tick { stroke: var(--paper-dim); stroke-width: 0.2; }
+
+    /* Iso view */
+    .iso-wrap {
+      margin-top: 60px;
+      padding: 30px;
+      background: var(--plum);
+      border: 1px solid var(--rule);
+    }
+    .iso-title {
+      font-family: var(--brush);
+      font-size: 22px;
+      color: var(--paper);
+      letter-spacing: 0.08em;
+      margin: 0 0 10px;
+    }
+    .iso-note {
+      font-family: var(--en);
+      font-style: italic;
+      font-size: 12px;
+      color: var(--paper-dim);
+      letter-spacing: 0.2em;
+      margin-bottom: 20px;
+    }
+    svg.iso { width: 100%; height: auto; display: block; }
+    .iso-floor { fill: rgba(184,160,216,0.05); stroke: var(--paper-dim); stroke-width: 0.3; }
+    .iso-vip { fill: rgba(120, 80, 170, 0.25); stroke: var(--smoke); stroke-width: 0.3; }
+    .iso-wall { fill: rgba(45,27,78,0.65); stroke: var(--paper-dim); stroke-width: 0.3; }
+    .iso-wall-2 { fill: rgba(30,16,52,0.7); stroke: var(--paper-dim); stroke-width: 0.3; }
+    .iso-bar { fill: rgba(200,155,108,0.4); stroke: var(--copper); stroke-width: 0.4; }
+    .iso-bar-side { fill: rgba(140,100,60,0.5); stroke: var(--copper); stroke-width: 0.3; }
+    .iso-sofa-top { fill: rgba(200,155,108,0.35); stroke: var(--copper); stroke-width: 0.3; }
+    .iso-sofa-side { fill: rgba(130,90,55,0.5); stroke: var(--copper); stroke-width: 0.3; }
+    .iso-grp-top { fill: rgba(184,160,216,0.25); stroke: var(--mist); stroke-width: 0.3; }
+    .iso-grp-side { fill: rgba(100,80,140,0.5); stroke: var(--mist); stroke-width: 0.3; }
+    .iso-ceiling-disc { fill: none; stroke: var(--paper-dim); stroke-width: 0.4; stroke-dasharray: 1 1; opacity: 0.55; }
+    .iso-speaker { fill: var(--copper); stroke: var(--copper); stroke-width: 0.3; }
+
+    .footer-note {
+      margin-top: 50px;
+      padding-top: 20px;
+      border-top: 1px solid var(--rule);
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--paper-dim);
+      letter-spacing: 0.15em;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+<div class="page">
+
+  <header class="top">
+    <div>
+      <h1 class="title">黑胶上的威士忌 · 空间平面图</h1>
+      <div class="title-en">WHISKEY ON VINYL · SPATIAL PLAN v1.0</div>
+    </div>
+    <div class="meta">
+      <div>SCALE 1 : 50</div>
+      <div>8.0 × 14.0 M  ·  112 ㎡</div>
+      <div>CAPACITY ~30 SEATS</div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <div class="plan-wrap">
+      <!-- ============ TOP-DOWN FLOOR PLAN ============
+        viewBox in decimeters: shop is 80 × 140 dm, with 8 dm margin
+      -->
+      <svg class="plan" viewBox="-8 -8 96 156" preserveAspectRatio="xMidYMid meet">
+        <defs>
+          <!-- perforated wood pattern -->
+          <pattern id="woodWall" x="0" y="0" width="2" height="2" patternUnits="userSpaceOnUse">
+            <circle cx="1" cy="1" r="0.15" fill="rgba(184,160,216,0.55)"/>
+          </pattern>
+          <pattern id="acousticPad" x="0" y="0" width="1.5" height="1.5" patternUnits="userSpaceOnUse">
+            <rect width="1.5" height="1.5" fill="rgba(140,100,160,0.10)"/>
+            <line x1="0" y1="0" x2="1.5" y2="1.5" stroke="rgba(184,160,216,0.30)" stroke-width="0.1"/>
+          </pattern>
+          <radialGradient id="ceilingDisc" cx="0.5" cy="0.5" r="0.5">
+            <stop offset="0%" stop-color="rgba(184,160,216,0.18)"/>
+            <stop offset="80%" stop-color="rgba(184,160,216,0.05)"/>
+            <stop offset="100%" stop-color="rgba(184,160,216,0)"/>
+          </radialGradient>
+        </defs>
+
+        <!-- subtle grid -->
+        <g class="grid">
+          <line class="grid-line" x1="0"  y1="0" x2="0"  y2="140"/>
+          <line class="grid-line" x1="20" y1="0" x2="20" y2="140"/>
+          <line class="grid-line" x1="40" y1="0" x2="40" y2="140"/>
+          <line class="grid-line" x1="60" y1="0" x2="60" y2="140"/>
+          <line class="grid-line" x1="80" y1="0" x2="80" y2="140"/>
+          <line class="grid-line" x1="0" y1="0"   x2="80" y2="0"/>
+          <line class="grid-line" x1="0" y1="20"  x2="80" y2="20"/>
+          <line class="grid-line" x1="0" y1="40"  x2="80" y2="40"/>
+          <line class="grid-line" x1="0" y1="60"  x2="80" y2="60"/>
+          <line class="grid-line" x1="0" y1="80"  x2="80" y2="80"/>
+          <line class="grid-line" x1="0" y1="100" x2="80" y2="100"/>
+          <line class="grid-line" x1="0" y1="120" x2="80" y2="120"/>
+          <line class="grid-line" x1="0" y1="140" x2="80" y2="140"/>
+        </g>
+
+        <!-- ============ CEILING DISC PROJECTION (顶棚黑胶投影) ============ -->
+        <circle cx="40" cy="78" r="32" fill="url(#ceilingDisc)" opacity="0.7"/>
+        <circle cx="40" cy="78" r="32" fill="none" stroke="var(--mist)" stroke-width="0.25" stroke-dasharray="2 2" opacity="0.55"/>
+        <circle cx="40" cy="78" r="18" fill="none" stroke="var(--mist)" stroke-width="0.2" stroke-dasharray="1.5 1.5" opacity="0.45"/>
+        <!-- clock hands projection -->
+        <line x1="40" y1="78" x2="55" y2="63" stroke="var(--copper)" stroke-width="0.6" opacity="0.7"/>
+        <line x1="40" y1="78" x2="48" y2="58" stroke="var(--mist)" stroke-width="0.4" opacity="0.6"/>
+        <circle cx="40" cy="78" r="1.2" fill="var(--copper)" opacity="0.7"/>
+        <text class="label-en" x="14" y="46" opacity="0.6">— ceiling vinyl + clock projection above —</text>
+
+        <!-- ============ OUTER WALLS ============ -->
+        <rect x="0" y="0" width="80" height="140" class="wall"/>
+
+        <!-- wall acoustic treatment shading (inner perimeter) -->
+        <rect x="0.7" y="0.7" width="78.6" height="138.6" fill="none" stroke="var(--paper-dim)" stroke-width="0.2" stroke-dasharray="0.4 0.4" opacity="0.5"/>
+
+        <!-- ============ BACK ZONE (吧台 + 后厨) ============ -->
+        <!-- Back-of-house partition wall (separating back kitchen from main room) -->
+        <!-- The arc bar runs across, leaving right corner open as the corridor to back kitchen / back door -->
+
+        <!-- Back kitchen / back-of-house area (top right corner) -->
+        <rect x="50" y="0" width="30" height="14" fill="rgba(255,255,255,0.04)"/>
+        <line x1="50" y1="0" x2="50" y2="14" class="wall-inner"/>
+        <line x1="50" y1="14" x2="80" y2="14" class="wall-inner"/>
+        <!-- back door (top) -->
+        <path class="door" d="M 62 0 L 62 -1.5 M 62 0 A 4 4 0 0 1 66 4"/>
+        <text class="label-sm" x="56" y="6" text-anchor="middle">后厨 / 后门</text>
+        <text class="label-en" x="56" y="9" text-anchor="middle">BACK-OF-HOUSE</text>
+
+        <!-- Wine cabinet (恒温恒湿酒柜) on back wall, left -->
+        <rect x="2" y="2" width="22" height="3" fill="rgba(200,155,108,0.20)" stroke="var(--copper)" stroke-width="0.4"/>
+        <!-- subdivisions -->
+        <g stroke="var(--copper)" stroke-width="0.2" opacity="0.7">
+          <line x1="7"  y1="2" x2="7"  y2="5"/>
+          <line x1="12" y1="2" x2="12" y2="5"/>
+          <line x1="17" y1="2" x2="17" y2="5"/>
+        </g>
+        <text class="label-sm" x="13" y="7.4" text-anchor="middle">恒温恒湿酒柜</text>
+        <text class="label-num" x="13" y="3.8" text-anchor="middle" fill="var(--copper)" font-size="1.4">1</text>
+
+        <!-- Music master control -->
+        <rect x="26" y="2" width="12" height="3" fill="rgba(200,155,108,0.15)" stroke="var(--copper)" stroke-width="0.4"/>
+        <text class="label-sm" x="32" y="7.4" text-anchor="middle">音乐总控台</text>
+        <text class="label-num" x="32" y="3.8" text-anchor="middle" fill="var(--copper)" font-size="1.4">2</text>
+        <text class="label-en" x="22" y="10.6" text-anchor="middle">Cellar &amp; listening console · 18°C / 65%RH</text>
+
+        <!-- Vinyl shelving against the left wall -->
+        <rect x="0.5" y="15" width="1.5" height="35" fill="rgba(200,155,108,0.20)" stroke="var(--copper)" stroke-width="0.3"/>
+        <g stroke="var(--copper)" stroke-width="0.15" opacity="0.7">
+          <line x1="0.5" y1="20" x2="2" y2="20"/>
+          <line x1="0.5" y1="25" x2="2" y2="25"/>
+          <line x1="0.5" y1="30" x2="2" y2="30"/>
+          <line x1="0.5" y1="35" x2="2" y2="35"/>
+          <line x1="0.5" y1="40" x2="2" y2="40"/>
+          <line x1="0.5" y1="45" x2="2" y2="45"/>
+        </g>
+        <text class="label-sm" x="4" y="33" transform="rotate(-90 4 33)" text-anchor="middle">黑胶收纳墙</text>
+
+        <!-- ============ BAR ARC (调酒区) ============ -->
+        <!-- Arc bar — opens toward room, deepest at top center -->
+        <!-- Arc from (8, 14) curving down to (50, 14), peak at (29, 22) -->
+        <path class="bar-arc" d="
+          M 8 14
+          Q 8 26 29 26
+          Q 50 26 50 14
+          L 50 18
+          Q 50 22 29 22
+          Q 8 22 8 18
+          Z
+        "/>
+        <text class="label-zh" x="29" y="24.5" text-anchor="middle">调酒吧台</text>
+        <text class="label-en" x="29" y="26.5" text-anchor="middle">SERVICE BAR · staff side</text>
+        <text class="label-num" x="29" y="20" text-anchor="middle">3</text>
+
+        <!-- ============ SPEAKERS ============ -->
+        <!-- Two main speakers flanking the bar, firing into room -->
+        <polygon class="speaker" points="6,30 10,30 8,34"/>
+        <polygon class="speaker" points="50,30 54,30 52,34"/>
+        <text class="label-num" x="8" y="29" text-anchor="middle">SP-L</text>
+        <text class="label-num" x="52" y="29" text-anchor="middle">SP-R</text>
+
+        <!-- Speaker dispersion cones (acoustic) -->
+        <path class="speaker-cone" d="M 8 34 L 22 60 M 8 34 L 38 70 M 8 34 L 4 60"/>
+        <path class="speaker-cone" d="M 52 34 L 38 60 M 52 34 L 22 70 M 52 34 L 56 60"/>
+
+        <!-- VIP sweet spot triangle (apex from speakers) -->
+        <path class="sweet-spot" d="M 8 34 L 52 34 L 30 60 Z"/>
+
+        <!-- ============ VIP ZONE (sweet spot) ============ -->
+        <!-- Darker floor patch -->
+        <path class="zone-vip" d="M 16 38 L 44 38 L 42 58 L 18 58 Z"/>
+        <!-- VIP seating: two lounge groupings inside sweet spot -->
+        <g class="furniture-warm">
+          <rect x="20" y="42" width="8" height="3" rx="0.6"/>
+          <rect x="32" y="42" width="8" height="3" rx="0.6"/>
+          <rect x="22" y="48" width="16" height="4" rx="0.8"/>
+          <!-- low table -->
+          <rect x="27" y="46" width="6" height="2" fill="rgba(200,155,108,0.30)" stroke="var(--copper)"/>
+        </g>
+        <text class="label-zh" x="30" y="40" text-anchor="middle">VIP · 听音甜点位</text>
+        <text class="label-en" x="30" y="56" text-anchor="middle">acoustic sweet spot · deeper floor tone</text>
+        <text class="label-num" x="30" y="50" text-anchor="middle">4</text>
+
+        <!-- ============ SOLO ZONE (closer to source) ============ -->
+        <!-- Single armchair / soft leather sofa, individual tables + lamps -->
+        <g>
+          <!-- Left column solos (3 sofas) -->
+          <g class="furniture-warm">
+            <rect x="6" y="66" width="6" height="4" rx="0.8"/>
+            <rect x="6" y="76" width="6" height="4" rx="0.8"/>
+            <rect x="6" y="86" width="6" height="4" rx="0.8"/>
+          </g>
+          <!-- corresponding small tables + lamps -->
+          <g>
+            <rect x="13" y="67" width="2.5" height="2" class="furniture"/>
+            <circle cx="14.25" cy="68" r="0.3" class="lamp"/>
+            <circle cx="14.25" cy="68" r="1.2" class="lamp-glow"/>
+            <rect x="13" y="77" width="2.5" height="2" class="furniture"/>
+            <circle cx="14.25" cy="78" r="0.3" class="lamp"/>
+            <circle cx="14.25" cy="78" r="1.2" class="lamp-glow"/>
+            <rect x="13" y="87" width="2.5" height="2" class="furniture"/>
+            <circle cx="14.25" cy="88" r="0.3" class="lamp"/>
+            <circle cx="14.25" cy="88" r="1.2" class="lamp-glow"/>
+          </g>
+
+          <!-- Right column solos (3 sofas) -->
+          <g class="furniture-warm">
+            <rect x="68" y="66" width="6" height="4" rx="0.8"/>
+            <rect x="68" y="76" width="6" height="4" rx="0.8"/>
+            <rect x="68" y="86" width="6" height="4" rx="0.8"/>
+          </g>
+          <g>
+            <rect x="64.5" y="67" width="2.5" height="2" class="furniture"/>
+            <circle cx="65.75" cy="68" r="0.3" class="lamp"/>
+            <circle cx="65.75" cy="68" r="1.2" class="lamp-glow"/>
+            <rect x="64.5" y="77" width="2.5" height="2" class="furniture"/>
+            <circle cx="65.75" cy="78" r="0.3" class="lamp"/>
+            <circle cx="65.75" cy="78" r="1.2" class="lamp-glow"/>
+            <rect x="64.5" y="87" width="2.5" height="2" class="furniture"/>
+            <circle cx="65.75" cy="88" r="0.3" class="lamp"/>
+            <circle cx="65.75" cy="88" r="1.2" class="lamp-glow"/>
+          </g>
+        </g>
+        <text class="label-zh" x="20" y="64" text-anchor="middle">独处区 · 暖色皮质沙发</text>
+        <text class="label-num" x="20" y="61" text-anchor="middle">5</text>
+        <text class="label-en" x="60" y="64" text-anchor="middle">solo · warm leather, near source</text>
+
+        <!-- ============ GROUP ZONE (farther from source) ============ -->
+        <g class="furniture">
+          <rect x="6" y="100" width="14" height="5" rx="0.8"/>
+          <rect x="6" y="108" width="14" height="5" rx="0.8"/>
+          <rect x="6" y="116" width="14" height="5" rx="0.8"/>
+          <rect x="60" y="100" width="14" height="5" rx="0.8"/>
+          <rect x="60" y="108" width="14" height="5" rx="0.8"/>
+          <rect x="60" y="116" width="14" height="5" rx="0.8"/>
+        </g>
+        <!-- group tables -->
+        <g>
+          <rect x="24" y="102" width="4" height="3" class="furniture"/>
+          <rect x="24" y="110" width="4" height="3" class="furniture"/>
+          <rect x="24" y="118" width="4" height="3" class="furniture"/>
+          <rect x="52" y="102" width="4" height="3" class="furniture"/>
+          <rect x="52" y="110" width="4" height="3" class="furniture"/>
+          <rect x="52" y="118" width="4" height="3" class="furniture"/>
+          <!-- lamps -->
+          <circle cx="26" cy="103.5" r="0.3" class="lamp"/><circle cx="26" cy="103.5" r="1.2" class="lamp-glow"/>
+          <circle cx="26" cy="111.5" r="0.3" class="lamp"/><circle cx="26" cy="111.5" r="1.2" class="lamp-glow"/>
+          <circle cx="26" cy="119.5" r="0.3" class="lamp"/><circle cx="26" cy="119.5" r="1.2" class="lamp-glow"/>
+          <circle cx="54" cy="103.5" r="0.3" class="lamp"/><circle cx="54" cy="103.5" r="1.2" class="lamp-glow"/>
+          <circle cx="54" cy="111.5" r="0.3" class="lamp"/><circle cx="54" cy="111.5" r="1.2" class="lamp-glow"/>
+          <circle cx="54" cy="119.5" r="0.3" class="lamp"/><circle cx="54" cy="119.5" r="1.2" class="lamp-glow"/>
+        </g>
+        <text class="label-zh" x="40" y="98" text-anchor="middle">群体区 · 帆布半躺椅</text>
+        <text class="label-num" x="40" y="95" text-anchor="middle">6</text>
+        <text class="label-en" x="40" y="126" text-anchor="middle">group · canvas loungers, farther from source</text>
+
+        <!-- ============ BATHROOM (with vestibule) ============ -->
+        <rect x="2" y="124" width="14" height="10" fill="rgba(255,255,255,0.04)" stroke="var(--paper-dim)" stroke-width="0.5"/>
+        <!-- vestibule -->
+        <rect x="2" y="124" width="6" height="10" fill="rgba(184,160,216,0.05)" stroke="var(--paper-dim)" stroke-width="0.3"/>
+        <line x1="8" y1="124" x2="8" y2="134" stroke="var(--paper-dim)" stroke-width="0.4"/>
+        <!-- doors -->
+        <path class="door" d="M 5 124 A 3 3 0 0 1 8 127"/>
+        <path class="door" d="M 10 124 A 3 3 0 0 1 13 127"/>
+        <text class="label-sm" x="5" y="130" text-anchor="middle">前室</text>
+        <text class="label-sm" x="12" y="130" text-anchor="middle">卫</text>
+        <text class="label-en" x="9" y="136.5" text-anchor="middle">w.c. + vestibule</text>
+        <text class="label-num" x="9" y="123" text-anchor="middle">7</text>
+
+        <!-- ============ ENTRANCE BUFFER ============ -->
+        <rect class="zone-buffer" x="20" y="124" width="40" height="14"/>
+        <!-- plants -->
+        <g class="plant">
+          <circle cx="24" cy="132" r="2"/>
+          <circle cx="22.5" cy="130" r="1.2"/>
+          <circle cx="25.5" cy="130" r="1.2"/>
+          <circle cx="56" cy="132" r="2"/>
+          <circle cx="54.5" cy="130" r="1.2"/>
+          <circle cx="57.5" cy="130" r="1.2"/>
+        </g>
+        <!-- floor logo (vinyl/clock symbol) -->
+        <circle cx="40" cy="132" r="3" fill="none" stroke="var(--copper)" stroke-width="0.4"/>
+        <circle cx="40" cy="132" r="2" fill="none" stroke="var(--copper)" stroke-width="0.2"/>
+        <circle cx="40" cy="132" r="0.5" fill="var(--copper)"/>
+        <text class="label-en" x="40" y="138" text-anchor="middle" fill="var(--copper)">⌬ floor logo</text>
+        <!-- entry door -->
+        <line x1="35" y1="140" x2="45" y2="140" stroke="var(--ink-1)" stroke-width="2"/>
+        <path class="door" d="M 35 140 A 5 5 0 0 1 40 145"/>
+        <text class="label-zh" x="40" y="123" text-anchor="middle">入口光与音缓冲带</text>
+        <text class="label-en" x="40" y="121" text-anchor="middle">— entrance transition: light fade · music fade —</text>
+        <text class="label-num" x="40" y="119" text-anchor="middle">8</text>
+
+        <!-- ============ DIMENSION LINES & SCALE ============ -->
+        <g class="axis-tick">
+          <line x1="0" y1="-3" x2="80" y2="-3"/>
+          <line x1="0" y1="-3.5" x2="0" y2="-2.5"/>
+          <line x1="80" y1="-3.5" x2="80" y2="-2.5"/>
+        </g>
+        <text class="label-axis" x="40" y="-4.5" text-anchor="middle">8000 mm</text>
+
+        <g class="axis-tick">
+          <line x1="-3" y1="0" x2="-3" y2="140"/>
+          <line x1="-3.5" y1="0" x2="-2.5" y2="0"/>
+          <line x1="-3.5" y1="140" x2="-2.5" y2="140"/>
+        </g>
+        <text class="label-axis" x="-5" y="70" text-anchor="middle" transform="rotate(-90 -5 70)">14000 mm</text>
+
+        <!-- N indicator -->
+        <g transform="translate(85 5)">
+          <circle cx="0" cy="0" r="3" fill="none" stroke="var(--paper-dim)" stroke-width="0.3"/>
+          <polygon points="0,-2.5 1,1 0,0 -1,1" fill="var(--paper-dim)"/>
+          <text class="label-axis" x="0" y="-3.5" text-anchor="middle">街 / FRONT</text>
+        </g>
+      </svg>
+    </div>
+
+    <!-- ============ LEGEND ============ -->
+    <aside class="legend">
+      <h3>编号 / Key</h3>
+      <ul>
+        <li><span class="num">1</span> <strong>恒温恒湿酒柜</strong>烈酒 SKU 全列储存,18°C / 65%RH</li>
+        <li><span class="num">2</span> <strong>音乐总控台</strong>黑胶 + 数字双源,选曲师位</li>
+        <li><span class="num">3</span> <strong>调酒吧台</strong>圆弧,工作面朝客区,后通后厨</li>
+        <li><span class="num">4</span> <strong>VIP 区</strong>主音响三角点听音甜点位,深色地板</li>
+        <li><span class="num">5</span> <strong>独处区</strong>暖色皮质沙发,靠近音源,每座独立台灯</li>
+        <li><span class="num">6</span> <strong>群体区</strong>帆布半躺椅,远离音源,适合 3-4 人</li>
+        <li><span class="num">7</span> <strong>卫生间</strong>角落,前室隔音缓冲</li>
+        <li><span class="num">8</span> <strong>入口缓冲带</strong>光渐暗,音渐入,植物 + 地面 logo</li>
+      </ul>
+
+      <h3>色彩与材质</h3>
+      <ul>
+        <li><span class="swatch" style="background: rgba(200,155,108,0.35); border-color: var(--copper)"></span> <strong>铜 / 暖</strong>沙发、酒柜、吧台、台灯</li>
+        <li><span class="swatch" style="background: rgba(184,160,216,0.30); border-color: var(--mist)"></span> <strong>烟雾紫</strong>半躺椅、桌面、墙体软包</li>
+        <li><span class="swatch" style="background: rgba(120, 80, 170, 0.40); border-color: var(--smoke)"></span> <strong>深紫</strong>VIP 区地板</li>
+        <li><span class="swatch" style="background: rgba(140, 200, 140, 0.55); border-color: rgba(140, 200, 140, 0.7)"></span> <strong>植物绿</strong>入口两侧</li>
+      </ul>
+
+      <h3>声学逻辑</h3>
+      <ul>
+        <li>墙面:<strong>穿孔木饰面</strong> + 后衬吸音棉</li>
+        <li>顶棚:大型黑胶软装,内填吸音棉</li>
+        <li>目标混响:<strong>RT60 ≈ 0.4–0.6 s</strong></li>
+        <li>主音响:吧台两侧,声轴指向 VIP 中心</li>
+        <li>独处区在三角声场内,群体区在三角外</li>
+      </ul>
+
+      <h3>灯光分层</h3>
+      <ul>
+        <li>顶棚凹陷灯带:淡紫,持续低亮</li>
+        <li>桌面台灯:暖色,可调亮度与角度</li>
+        <li>色温按时段缓变:</li>
+        <li style="padding-left: 26px;">9pm <strong>2700K</strong> → 12am <strong>2200K</strong> → 2am <strong>1800K</strong></li>
+      </ul>
+
+      <h3>容量</h3>
+      <ul>
+        <li>独处区:<strong>6 个独立座</strong></li>
+        <li>群体区:<strong>6 组半躺椅</strong>(~18 人)</li>
+        <li>VIP 区:<strong>2 组沙发</strong>(~6 人)</li>
+        <li>合计:<strong>约 30 位</strong></li>
+      </ul>
+    </aside>
+  </div>
+
+  <!-- ============ ISOMETRIC PERSPECTIVE ============ -->
+  <div class="iso-wrap">
+    <h2 class="iso-title">空间轴测视图 · Isometric View</h2>
+    <div class="iso-note">看向店内 · LOOKING FROM ENTRANCE TOWARD BAR</div>
+
+    <svg class="iso" viewBox="-85 -42 175 130" preserveAspectRatio="xMidYMid meet">
+      <!--
+        Iso projection: x axis rotated +30°, y axis (depth) rotated -30°
+        World point (X, Y, Z) -> screen
+          screen_x = (X - Y) * cos(30) = (X - Y) * 0.866
+          screen_y = (X + Y) * sin(30) - Z = (X + Y) * 0.5 - Z
+
+        For shop 80 wide x 140 deep, scale so it fits.
+        Let's use shop world units = decimeters, then scale 1.0
+      -->
+      <defs>
+        <radialGradient id="discGlow" cx="0.5" cy="0.5" r="0.5">
+          <stop offset="0%" stop-color="rgba(184,160,216,0.6)"/>
+          <stop offset="50%" stop-color="rgba(184,160,216,0.2)"/>
+          <stop offset="100%" stop-color="rgba(184,160,216,0)"/>
+        </radialGradient>
+      </defs>
+
+      <!-- helper: in isometric, with cos30 = 0.866 and sin30 = 0.5
+         shop corners (X, Y, Z):
+           A (0, 0, 0)    -> ( 0,  0)
+           B (80, 0, 0)   -> ( 69.3, 40)
+           C (80, 140, 0) -> ( -52, 110)
+           D (0, 140, 0)  -> ( -121.2, 70)
+         scale 0.6:
+           A -> (0, 0)
+           B -> (41.6, 24)
+           C -> (-31.2, 66)
+           D -> (-72.8, 42)
+       -->
+
+      <!-- FLOOR (full) -->
+      <polygon class="iso-floor" points="0,0  41.6,24  -31.2,66  -72.8,42"/>
+
+      <!-- VIP floor patch (deeper purple) — at sweet spot zone
+         VIP corners in world (X,Y): (16,38) (44,38) (42,58) (18,58)
+         iso = (X-Y)*0.6, (X+Y)*0.3
+         (16,38) -> ((16-38)*0.6, (16+38)*0.3) = (-13.2, 16.2)
+         (44,38) -> ( 3.6, 24.6)
+         (42,58) -> (-9.6, 30)
+         (18,58) -> (-24, 22.8)
+      -->
+      <polygon class="iso-vip" points="-13.2,16.2  3.6,24.6  -9.6,30  -24,22.8"/>
+
+      <!-- WALLS (verticals) — wall height = 32 dm = 3.2 m
+         Each wall is a polygon: floor edge + top edge (Z=32)
+         Top edge: floor screen_y - 32
+      -->
+      <!-- Back wall (Y=0, from A to B): A (0,0), B (41.6,24); top: A' (0,-32), B' (41.6,-8) -->
+      <polygon class="iso-wall-2" points="0,0  41.6,24  41.6,-8  0,-32"/>
+      <!-- Right wall (X=80, from B to C): B(41.6,24), C(-31.2,66); top: B'(41.6,-8), C'(-31.2,34) -->
+      <polygon class="iso-wall" points="41.6,24  -31.2,66  -31.2,34  41.6,-8"/>
+      <!-- Front wall hidden (entrance side) — show partially as low element -->
+
+      <!-- CEILING DISC (large vinyl) — hovering at Z=28 above center of room (40, 78)
+           screen point of center: (-22.8, 35.4), shift up by 28 -> (-22.8, 7.4)
+           Actually wait — we render the disc as if seen from below; its screen position is the same center, just elevated -28
+           radius 32 in world; in iso, draw as ellipse with major axis ~32 * sqrt(3)/2 stretched
+           Simpler: draw an ellipse at screen position
+      -->
+      <g transform="translate(-22.8 0)">
+        <ellipse cx="0" cy="0" rx="22" ry="11" fill="url(#discGlow)" opacity="0.85"/>
+        <ellipse cx="0" cy="0" rx="22" ry="11" fill="none" stroke="var(--paper-dim)" stroke-width="0.4" stroke-dasharray="1 1" opacity="0.7"/>
+        <ellipse cx="0" cy="0" rx="14" ry="7" fill="none" stroke="var(--paper-dim)" stroke-width="0.3" stroke-dasharray="0.8 0.8" opacity="0.55"/>
+        <ellipse cx="0" cy="0" rx="6" ry="3" fill="none" stroke="var(--copper)" stroke-width="0.3" opacity="0.6"/>
+        <!-- clock hands -->
+        <line x1="0" y1="0" x2="11" y2="-5" stroke="var(--copper)" stroke-width="0.6"/>
+        <line x1="0" y1="0" x2="6" y2="-7" stroke="var(--mist)" stroke-width="0.5"/>
+        <circle cx="0" cy="0" r="0.6" fill="var(--copper)"/>
+        <text class="label-en" x="0" y="-13" text-anchor="middle" fill="var(--paper-dim)">CEILING VINYL + CLOCK</text>
+      </g>
+
+      <!-- BAR ARC (extruded) — at Y near 22, X from 8 to 50, height 1.1m (11dm)
+           Floor footprint corners: (8, 22), (50, 22) — and an arc; render as a block for simplicity
+      -->
+      <!-- bar top -->
+      <polygon class="iso-bar" points="
+        -8.4,9
+        25.2,21
+        12.6,33
+        -21,21
+      "/>
+      <!-- bar front face (visible) -->
+      <polygon class="iso-bar-side" points="
+        -21,21
+        12.6,33
+        12.6,39
+        -21,27
+      "/>
+      <!-- speakers atop bar ends -->
+      <polygon class="iso-speaker" points="-21,21 -19,21 -20,17"/>
+      <polygon class="iso-speaker" points="25.2,21 27.2,21 26.2,17"/>
+
+      <!-- WINE CABINET behind bar — at Y=2-5, X=2-24, Z=18 (1.8m)
+           bottom corners: (2,2) -> (-1.2, 1.2),  (24,2) -> (13.2, 7.8)
+                           (24,5) -> (11.4, 8.7), (2,5)  -> (-3.0, 2.1)
+           top: shift up by 18 (Z=18) -> y -= 18
+      -->
+      <polygon class="iso-bar" points="
+        -3, -15.9
+        11.4, -9.3
+        13.2, -10.2
+        -1.2, -16.8
+      "/>
+      <polygon class="iso-bar-side" points="
+        -3, -15.9
+        11.4, -9.3
+        11.4, 8.7
+        -3, 2.1
+      "/>
+
+      <!-- VIP SOFA (1 main piece for visual) — at world (22,48) ~ size 16x4, height 4
+           corners: (22,48) -> (-15.6, 21), (38,48) -> (-6,25.8)
+                    (38,52) -> (-8.4, 27),  (22,52) -> (-18, 22.2)
+           top: y -= 4
+      -->
+      <polygon class="iso-sofa-top" points="-15.6,17  -6,21.8  -8.4,23  -18,18.2"/>
+      <polygon class="iso-sofa-side" points="-18,18.2  -8.4,23  -8.4,27  -18,22.2"/>
+
+      <!-- SOLO sofa example (left side, near y=78) — armchair at world (6, 78) size 6x4, height 5
+           corners: (6,78) -> (-43.2, 25.2), (12,78) -> (-39.6, 27)
+                    (12,82) -> (-42, 28.2),  (6,82)  -> (-45.6, 26.4)
+      -->
+      <polygon class="iso-sofa-top" points="-43.2,20.2  -39.6,22  -42,23.2  -45.6,21.4"/>
+      <polygon class="iso-sofa-side" points="-45.6,21.4  -42,23.2  -42,28.2  -45.6,26.4"/>
+
+      <!-- 2nd solo sofa at (6, 88) -->
+      <polygon class="iso-sofa-top" points="-49.2,23.2  -45.6,25  -48,26.2  -51.6,24.4"/>
+      <polygon class="iso-sofa-side" points="-51.6,24.4  -48,26.2  -48,31.2  -51.6,29.4"/>
+
+      <!-- Solo sofa right side at (68, 78) — corners: (68,78)->(-6,43.8), (74,78)->(-2.4,45.6),
+           (74,82)->(-4.8,46.8), (68,82)->(-8.4,45) -->
+      <polygon class="iso-sofa-top" points="-6,38.8  -2.4,40.6  -4.8,41.8  -8.4,40"/>
+      <polygon class="iso-sofa-side" points="-8.4,40  -4.8,41.8  -4.8,46.8  -8.4,45"/>
+
+      <!-- Group lounger at (6, 108) — size 14x5, height 4
+           corners: (6,108)->(-61.2, 34.2), (20,108)->(-52.8, 38.4)
+                    (20,113)->(-55.8, 39.9), (6,113)->(-64.2, 35.7)
+      -->
+      <polygon class="iso-grp-top" points="-61.2,30.2  -52.8,34.4  -55.8,35.9  -64.2,31.7"/>
+      <polygon class="iso-grp-side" points="-64.2,31.7  -55.8,35.9  -55.8,39.9  -64.2,35.7"/>
+
+      <!-- Group lounger right at (60, 108) — corners: (60,108)->(-28.8, 50.4), (74,108)->(-20.4, 54.6)
+                                                       (74,113)->(-23.4, 56.1), (60,113)->(-31.8, 51.9) -->
+      <polygon class="iso-grp-top" points="-28.8,46.4  -20.4,50.6  -23.4,52.1  -31.8,47.9"/>
+      <polygon class="iso-grp-side" points="-31.8,47.9  -23.4,52.1  -23.4,56.1  -31.8,51.9"/>
+
+      <!-- ENTRANCE area marker — floor logo at (40,132)
+           iso center: ((40-132)*0.6, (40+132)*0.3) = (-55.2, 51.6)
+      -->
+      <ellipse cx="-55.2" cy="51.6" rx="3" ry="1.5" fill="none" stroke="var(--copper)" stroke-width="0.5"/>
+      <ellipse cx="-55.2" cy="51.6" rx="1.5" ry="0.75" fill="none" stroke="var(--copper)" stroke-width="0.3"/>
+      <circle cx="-55.2" cy="51.6" r="0.4" fill="var(--copper)"/>
+      <text class="label-en" x="-55.2" y="56" text-anchor="middle" fill="var(--copper)" font-size="2">⌬ entrance logo</text>
+
+      <!-- Labels in iso -->
+      <text class="label-zh" x="-22.8" y="42" text-anchor="middle" font-size="3" fill="var(--paper)">VIP</text>
+      <text class="label-zh" x="2"   y="14" text-anchor="middle" font-size="2.6" fill="var(--paper)">吧台</text>
+      <text class="label-zh" x="-48" y="42" text-anchor="middle" font-size="2.4" fill="var(--paper-dim)">独处区</text>
+      <text class="label-zh" x="-26" y="65" text-anchor="middle" font-size="2.4" fill="var(--paper-dim)">群体区</text>
+      <text class="label-zh" x="-55.2" y="46" text-anchor="middle" font-size="2.4" fill="var(--paper-dim)">入口</text>
+
+    </svg>
+  </div>
+
+  <div class="footer-note">
+    黑胶上的威士忌 · 空间平面图 v1.0 · A LIVING DOCUMENT — to be refined with the architect
+  </div>
+
+</div>
+
+</body>
+</html>
