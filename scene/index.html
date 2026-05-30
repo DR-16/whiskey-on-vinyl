@@ -6,7 +6,7 @@
   <title>黑胶上的威士忌 · 空间 3D 场景</title>
   <style>
     html, body {
-      margin: 0; padding: 0; background: #07040E; color: #E8DDF0;
+      margin: 0; padding: 0; background: #050309; color: #E8DDF0;
       font-family: "Noto Serif SC", "PingFang SC", serif;
       overflow: hidden;
       height: 100vh; width: 100vw;
@@ -62,13 +62,12 @@
 <div class="hud">
   <h1>黑胶上的威士忌 · 空间场景</h1>
   <div class="views">
-    <button data-view="entrance" class="on">入口视角</button>
-    <button data-view="bar">吧台视角</button>
-    <button data-view="vip">VIP 视角</button>
-    <button data-view="solo">独处区</button>
-    <button data-view="group">群体区</button>
-    <button data-view="topdown">俯瞰</button>
+    <button data-view="topdown" class="on">俯瞰平面</button>
     <button data-view="hero">主视图</button>
+    <button data-view="entrance">入口</button>
+    <button data-view="bar">吧台</button>
+    <button data-view="vip">VIP</button>
+    <button data-view="hall">主厅</button>
   </div>
 </div>
 <div class="info">DRAG · ORBIT &nbsp;|&nbsp; SCROLL · ZOOM</div>
@@ -89,15 +88,37 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 // =================================================================
+// CONSTANTS — room dimensions, matching reference proportions
+// =================================================================
+const W = 9.5;        // width  (x: -4.75 .. +4.75)
+const D = 12.5;       // depth  (z: 0 .. 12.5; entrance at z=0, bar at z=12.5)
+const H = 3.0;        // height
+
+// =================================================================
 // SCENE / CAMERA / RENDERER
 // =================================================================
 const canvas = document.getElementById('scene');
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x07040E);
-scene.fog = new THREE.FogExp2(0x0E0716, 0.045);
+scene.background = new THREE.Color(0x050309);
+scene.fog = new THREE.FogExp2(0x09060f, 0.038);
 
-const camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.05, 80);
-camera.position.set(0, 1.6, 1.5);
+const aspect = window.innerWidth / window.innerHeight;
+const persCam = new THREE.PerspectiveCamera(50, aspect, 0.05, 100);
+persCam.position.set(0, 1.6, 1.5);
+
+// Orthographic top-down camera (for the "ground-truth plan view" hero shot)
+const orthoSize = 7.5;
+const orthoCam = new THREE.OrthographicCamera(
+  -orthoSize * aspect, orthoSize * aspect,
+   orthoSize, -orthoSize,
+   0.1, 60
+);
+orthoCam.position.set(0, 20, D/2);
+// world +z (bar end) should appear at TOP of screen, world -z (entrance) at BOTTOM
+orthoCam.up.set(0, 0, 1);
+orthoCam.lookAt(0, 0, D/2);
+
+let activeCam = persCam;
 
 const renderer = new THREE.WebGLRenderer({
   canvas, antialias: true,
@@ -108,687 +129,1048 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.05;
+renderer.toneMappingExposure = 1.1;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 
-const controls = new OrbitControls(camera, canvas);
-controls.target.set(0, 1.3, 7);
+const controls = new OrbitControls(persCam, canvas);
+controls.target.set(0, 1.0, 7);
 controls.enableDamping = true;
 controls.dampingFactor = 0.06;
 controls.maxPolarAngle = Math.PI * 0.495;
-controls.minDistance = 0.8;
-controls.maxDistance = 18;
+controls.minDistance = 0.6;
+controls.maxDistance = 20;
 
 // =================================================================
-// ROOM — floor, walls, ceiling
-// Coordinate system:
-//   x: width  -4..4 (8m)
-//   y: height  0..3 (3m)
-//   z: depth   0..14 (entrance at z=0, bar at z=13)
+// MATERIALS — palette
 // =================================================================
-const W = 8, D = 14, H = 3.0;
+const MAT = {
+  floorWood: new THREE.MeshStandardMaterial({
+    color: 0x251612, roughness: 0.78, metalness: 0.05,
+  }),
+  floorVip: new THREE.MeshStandardMaterial({
+    color: 0x1a0d18, roughness: 0.55, metalness: 0.08,
+    emissive: 0x0a050d, emissiveIntensity: 0.4,
+  }),
+  floorEntry: new THREE.MeshStandardMaterial({
+    color: 0x1d100c, roughness: 0.7, metalness: 0.05,
+  }),
+  wall: new THREE.MeshStandardMaterial({
+    color: 0x100a18, roughness: 0.92, metalness: 0.0,
+  }),
+  wallDark: new THREE.MeshStandardMaterial({
+    color: 0x0a0712, roughness: 0.95, metalness: 0.0,
+  }),
+  ceil: new THREE.MeshStandardMaterial({
+    color: 0x070410, roughness: 0.98, metalness: 0.0,
+  }),
+  leatherWarm: new THREE.MeshStandardMaterial({
+    color: 0x6b3a26, roughness: 0.55, metalness: 0.0,
+    emissive: 0x1a0a04, emissiveIntensity: 0.25,
+  }),
+  leatherDeep: new THREE.MeshStandardMaterial({
+    color: 0x4a2418, roughness: 0.55, metalness: 0.0,
+    emissive: 0x180704, emissiveIntensity: 0.25,
+  }),
+  velvetVip: new THREE.MeshStandardMaterial({
+    color: 0x4a2840, roughness: 0.7, metalness: 0.0,
+    emissive: 0x1a0e1a, emissiveIntensity: 0.4,
+  }),
+  canvasFabric: new THREE.MeshStandardMaterial({
+    color: 0x383040, roughness: 0.85, metalness: 0.0,
+  }),
+  woodDark: new THREE.MeshStandardMaterial({
+    color: 0x1a0e08, roughness: 0.5, metalness: 0.25,
+  }),
+  marble: new THREE.MeshStandardMaterial({
+    color: 0x12080a, roughness: 0.15, metalness: 0.55,
+  }),
+  copper: new THREE.MeshStandardMaterial({
+    color: 0xC89B6C, roughness: 0.3, metalness: 0.75,
+    emissive: 0x4a2810, emissiveIntensity: 0.45,
+  }),
+  copperGlow: new THREE.MeshBasicMaterial({
+    color: 0xC89B6C, transparent: true, opacity: 0.55,
+  }),
+  lavenderCove: new THREE.MeshBasicMaterial({
+    color: 0x9c7fd8, transparent: true, opacity: 0.75,
+  }),
+  warmBulb: new THREE.MeshBasicMaterial({ color: 0xffd09a }),
+  glassAmber: new THREE.MeshStandardMaterial({
+    color: 0x6b3a14, roughness: 0.12, metalness: 0.2,
+    transparent: true, opacity: 0.78,
+    emissive: 0x3a1a06, emissiveIntensity: 0.55,
+  }),
+  glassClear: new THREE.MeshStandardMaterial({
+    color: 0x382820, roughness: 0.1, metalness: 0.15,
+    transparent: true, opacity: 0.65,
+    emissive: 0x4a3a26, emissiveIntensity: 0.4,
+  }),
+};
 
-// Materials
-const floorMat = new THREE.MeshStandardMaterial({
-  color: 0x1a0e25, roughness: 0.75, metalness: 0.08,
-});
-const floorVipMat = new THREE.MeshStandardMaterial({
-  color: 0x0e0518, roughness: 0.65, metalness: 0.06,
-});
-const wallMat = new THREE.MeshStandardMaterial({
-  color: 0x16101f, roughness: 0.92, metalness: 0.0,
-});
-const ceilMat = new THREE.MeshStandardMaterial({
-  color: 0x0a0612, roughness: 0.98, metalness: 0.0,
-});
-
-// Floor
-const floor = new THREE.Mesh(new THREE.PlaneGeometry(W, D), floorMat);
+// =================================================================
+// FLOOR (with subtle plank/parquet pattern as repeating dark grooves)
+// =================================================================
+// Main floor
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(W, D), MAT.floorWood);
 floor.rotation.x = -Math.PI / 2;
 floor.position.set(0, 0, D / 2);
 floor.receiveShadow = true;
 scene.add(floor);
 
-// VIP floor patch (deeper tone) — at speaker triangle sweet spot
-const vipFloor = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 2.4), floorVipMat);
+// Floor plank grooves (lines on floor surface)
+function addPlankGrooves() {
+  const grooveMat = new THREE.MeshBasicMaterial({
+    color: 0x0c0508, transparent: true, opacity: 0.6,
+  });
+  // Long grooves running along x-axis (parallel planks)
+  for (let z = 0.4; z < D; z += 0.4) {
+    const line = new THREE.Mesh(new THREE.PlaneGeometry(W, 0.012), grooveMat);
+    line.rotation.x = -Math.PI/2;
+    line.position.set(0, 0.005, z);
+    scene.add(line);
+  }
+  // Cross seams at random intervals
+  for (let z = 0.4; z < D; z += 0.4) {
+    let x = -W/2 + 0.5 + Math.random() * 1.5;
+    while (x < W/2) {
+      const seam = new THREE.Mesh(new THREE.PlaneGeometry(0.012, 0.4), grooveMat);
+      seam.rotation.x = -Math.PI/2;
+      seam.position.set(x, 0.006, z - 0.2);
+      scene.add(seam);
+      x += 1.4 + Math.random() * 1.0;
+    }
+  }
+}
+addPlankGrooves();
+
+// VIP floor patch (deeper purple-tinted wood) — lower center
+const vipFloor = new THREE.Mesh(new THREE.PlaneGeometry(5.5, 2.2), MAT.floorVip);
 vipFloor.rotation.x = -Math.PI / 2;
-vipFloor.position.set(0, 0.005, 10.5);
+vipFloor.position.set(0, 0.008, 2.6);
 vipFloor.receiveShadow = true;
 scene.add(vipFloor);
 
-// Ceiling
-const ceil = new THREE.Mesh(new THREE.PlaneGeometry(W, D), ceilMat);
-ceil.rotation.x = Math.PI / 2;
-ceil.position.set(0, H, D / 2);
-scene.add(ceil);
+// Entrance floor patch (slightly different, warm)
+const entryFloor = new THREE.Mesh(new THREE.PlaneGeometry(3.0, 1.6), MAT.floorEntry);
+entryFloor.rotation.x = -Math.PI / 2;
+entryFloor.position.set(-2.8, 0.008, 0.85);
+entryFloor.receiveShadow = true;
+scene.add(entryFloor);
 
-// Walls — back / front / left / right
+// =================================================================
+// WALLS — outer rectangle
+// =================================================================
 function makeWall(w, h, mat) {
   const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat);
   m.receiveShadow = true;
   return m;
 }
-// back wall (z = 14)
-const wBack = makeWall(W, H, wallMat);
+// back (z = D)
+const wBack = makeWall(W, H, MAT.wall);
 wBack.position.set(0, H/2, D);
 wBack.rotation.y = Math.PI;
 scene.add(wBack);
-// front wall (z = 0) — entrance side
-const wFront = makeWall(W, H, wallMat);
+// front (z = 0)
+const wFront = makeWall(W, H, MAT.wall);
 wFront.position.set(0, H/2, 0);
 scene.add(wFront);
-// left wall (x = -4)
-const wLeft = makeWall(D, H, wallMat);
+// left (x = -W/2)
+const wLeft = makeWall(D, H, MAT.wall);
 wLeft.position.set(-W/2, H/2, D/2);
 wLeft.rotation.y = Math.PI / 2;
 scene.add(wLeft);
-// right wall (x = +4)
-const wRight = makeWall(D, H, wallMat);
+// right (x = W/2)
+const wRight = makeWall(D, H, MAT.wall);
 wRight.position.set(W/2, H/2, D/2);
 wRight.rotation.y = -Math.PI / 2;
 scene.add(wRight);
 
-// Perforated wood wall pattern — small lit dots on walls (suggest the perforated wood absorber)
-const dotMat = new THREE.MeshStandardMaterial({
-  color: 0x2a1a3a, emissive: 0x1a0e2a, roughness: 0.6,
-});
-function addWallDots(planeW, planeH, position, rotationY) {
-  const cols = Math.floor(planeW / 0.5);
-  const rows = Math.floor(planeH / 0.5);
-  const dotGeo = new THREE.CircleGeometry(0.02, 6);
-  const mesh = new THREE.InstancedMesh(dotGeo, dotMat, cols * rows);
-  const dummy = new THREE.Object3D();
-  let i = 0;
-  for (let c = 0; c < cols; c++) {
-    for (let r = 0; r < rows; r++) {
-      const x = -planeW/2 + 0.25 + c * 0.5;
-      const y = 0.25 + r * 0.5;
-      dummy.position.set(x, y, 0.001);
-      dummy.updateMatrix();
-      mesh.setMatrixAt(i++, dummy.matrix);
-    }
-  }
-  mesh.position.copy(position);
-  mesh.rotation.y = rotationY;
-  scene.add(mesh);
-}
-addWallDots(W, H, new THREE.Vector3(0, 0, 0.01),    0);            // front
-addWallDots(W, H, new THREE.Vector3(0, 0, D-0.01),  Math.PI);      // back
-addWallDots(D, H, new THREE.Vector3(-W/2+0.01, 0, 0), Math.PI/2);  // left
-addWallDots(D, H, new THREE.Vector3(W/2-0.01, 0, 0), -Math.PI/2);  // right
+// Ceiling
+const ceil = new THREE.Mesh(new THREE.PlaneGeometry(W, D), MAT.ceil);
+ceil.rotation.x = Math.PI / 2;
+ceil.position.set(0, H, D / 2);
+scene.add(ceil);
+ceil.userData.hideInTopdown = true;
 
-// Cove lighting strip — lavender emissive strip near the ceiling perimeter
-const coveMat = new THREE.MeshBasicMaterial({ color: 0x8a6fcc, transparent: true, opacity: 0.6 });
+// =================================================================
+// PERIMETER COVE LIGHT STRIPS (lavender) — along all 4 walls
+// =================================================================
 function addCoveStrip(w, position, rotationY) {
-  const strip = new THREE.Mesh(new THREE.PlaneGeometry(w, 0.05), coveMat);
+  const strip = new THREE.Mesh(new THREE.PlaneGeometry(w, 0.06), MAT.lavenderCove);
   strip.position.copy(position);
   strip.rotation.y = rotationY;
+  strip.userData.hideInTopdown = true;
   scene.add(strip);
+  // back glow plane on wall to fake bloom
+  const glow = new THREE.Mesh(
+    new THREE.PlaneGeometry(w, 0.6),
+    new THREE.MeshBasicMaterial({
+      color: 0x6b4a8c, transparent: true, opacity: 0.18, blending: THREE.AdditiveBlending,
+    })
+  );
+  glow.position.copy(position);
+  glow.position.y -= 0.25;
+  glow.rotation.y = rotationY;
+  glow.userData.hideInTopdown = true;
+  scene.add(glow);
 }
-addCoveStrip(W - 0.2, new THREE.Vector3(0, H - 0.25, 0.02), 0);
-addCoveStrip(W - 0.2, new THREE.Vector3(0, H - 0.25, D - 0.02), Math.PI);
-addCoveStrip(D - 0.2, new THREE.Vector3(-W/2 + 0.02, H - 0.25, D/2), Math.PI/2);
-addCoveStrip(D - 0.2, new THREE.Vector3(W/2 - 0.02, H - 0.25, D/2), -Math.PI/2);
+addCoveStrip(W - 0.3, new THREE.Vector3(0, H - 0.28, 0.02), 0);
+addCoveStrip(W - 0.3, new THREE.Vector3(0, H - 0.28, D - 0.02), Math.PI);
+addCoveStrip(D - 0.3, new THREE.Vector3(-W/2 + 0.02, H - 0.28, D/2), Math.PI/2);
+addCoveStrip(D - 0.3, new THREE.Vector3(W/2 - 0.02, H - 0.28, D/2), -Math.PI/2);
 
 // =================================================================
-// CEILING VINYL — large floating disc with clock hands
+// CEILING VINYL — large dark disc with copper clock hands
 // =================================================================
 const discGroup = new THREE.Group();
-discGroup.position.set(0, H - 0.35, 7);
+discGroup.position.set(0, H - 0.32, 6.5);
 scene.add(discGroup);
+discGroup.userData.hideInTopdown = true;
 
-const discMat = new THREE.MeshStandardMaterial({
-  color: 0x140a20, roughness: 0.55, metalness: 0.35,
-  emissive: 0x2a1648, emissiveIntensity: 0.5,
-});
-const disc = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.2, 0.06, 64), discMat);
+const disc = new THREE.Mesh(
+  new THREE.CylinderGeometry(2.4, 2.4, 0.08, 96),
+  new THREE.MeshStandardMaterial({
+    color: 0x0e081a, roughness: 0.4, metalness: 0.45,
+    emissive: 0x2a1a48, emissiveIntensity: 0.55,
+  })
+);
 discGroup.add(disc);
 
-// grooves: thin rings
-const grooveMat = new THREE.MeshBasicMaterial({ color: 0x6b4a8c, transparent: true, opacity: 0.5 });
-for (let r = 0.6; r < 2.15; r += 0.08) {
-  const ring = new THREE.Mesh(new THREE.RingGeometry(r, r + 0.005, 64), grooveMat);
+// concentric grooves
+const grooveRingMat = new THREE.MeshBasicMaterial({
+  color: 0x6b4a8c, transparent: true, opacity: 0.45,
+});
+for (let r = 0.7; r < 2.35; r += 0.07) {
+  const ring = new THREE.Mesh(
+    new THREE.RingGeometry(r, r + 0.005, 96),
+    grooveRingMat
+  );
   ring.rotation.x = Math.PI/2;
-  ring.position.y = -0.031;
+  ring.position.y = -0.041;
   discGroup.add(ring);
 }
 // center label
 const centerLabel = new THREE.Mesh(
-  new THREE.CylinderGeometry(0.4, 0.4, 0.062, 32),
-  new THREE.MeshStandardMaterial({ color: 0xC89B6C, roughness: 0.4, metalness: 0.7, emissive: 0x6b4220, emissiveIntensity: 0.5 })
+  new THREE.CylinderGeometry(0.42, 0.42, 0.083, 32),
+  MAT.copper
 );
 discGroup.add(centerLabel);
 
-// clock hands (hour = bar spoon stub, minute = pick)
+// clock hands
 const handHour = new THREE.Mesh(
-  new THREE.BoxGeometry(0.07, 0.02, 0.9),
-  new THREE.MeshStandardMaterial({ color: 0xC89B6C, roughness: 0.35, metalness: 0.7, emissive: 0x4a2e10, emissiveIntensity: 0.6 })
+  new THREE.BoxGeometry(0.09, 0.025, 1.0),
+  new THREE.MeshStandardMaterial({
+    color: 0xC89B6C, roughness: 0.3, metalness: 0.75,
+    emissive: 0x4a2e10, emissiveIntensity: 0.7,
+  })
 );
-handHour.position.set(0.25, -0.04, 0.4);
-handHour.rotation.y = -0.6;
+handHour.position.set(0.28, -0.05, 0.4);
+handHour.rotation.y = -0.7;
 discGroup.add(handHour);
 
 const handMin = new THREE.Mesh(
-  new THREE.BoxGeometry(0.04, 0.02, 1.4),
-  new THREE.MeshStandardMaterial({ color: 0xd2b894, roughness: 0.5, metalness: 0.3, emissive: 0x3a2e1a, emissiveIntensity: 0.5 })
+  new THREE.BoxGeometry(0.05, 0.025, 1.5),
+  new THREE.MeshStandardMaterial({
+    color: 0xd2b894, roughness: 0.45, metalness: 0.4,
+    emissive: 0x3a2e1a, emissiveIntensity: 0.55,
+  })
 );
-handMin.position.set(0.05, -0.04, 0.65);
+handMin.position.set(0.05, -0.05, 0.7);
 handMin.rotation.y = -0.1;
 discGroup.add(handMin);
 
-// disc emits a soft purple light onto room (acts like a hidden uplight)
-const discLight = new THREE.PointLight(0xa080d0, 1.6, 12, 1.5);
-discLight.position.set(0, H - 0.55, 7);
+// disc emits a soft purple light to the room
+const discLight = new THREE.PointLight(0x9c7fd8, 1.8, 14, 1.6);
+discLight.position.set(0, H - 0.5, 6.5);
 scene.add(discLight);
 
 // =================================================================
-// BAR ARC at the back (z near 12)
+// BAR — arc shape at the back (z = 9.5 to 12), bartender side INSIDE the arc
+// Bar opens TOWARD the room (facing -z)
 // =================================================================
 const barGroup = new THREE.Group();
-barGroup.position.set(0, 0, 12);
+barGroup.position.set(0, 0, 11.0);
 scene.add(barGroup);
 
-// Bar counter as an arc — use TorusGeometry partial
-const barRadius = 2.6, barTube = 0.4, barHeight = 1.1;
-// Build an arc shape extrusion
+// Bar arc geometry — extruded shape
+const barOuter = 3.8, barInner = 3.0, barHeight = 1.05;
 const barShape = new THREE.Shape();
-const r1 = barRadius, r2 = barRadius - 0.7;
-barShape.absarc(0, 0, r1, Math.PI, Math.PI*2, false);
-barShape.lineTo(r2, 0);
-barShape.absarc(0, 0, r2, Math.PI*2, Math.PI, true);
-barShape.lineTo(-r1, 0);
-
+barShape.absarc(0, 0, barOuter, Math.PI, 2*Math.PI, false);
+barShape.lineTo(barInner, 0);
+barShape.absarc(0, 0, barInner, 2*Math.PI, Math.PI, true);
+barShape.lineTo(-barOuter, 0);
 const barGeo = new THREE.ExtrudeGeometry(barShape, { depth: barHeight, bevelEnabled: false });
-const barMat = new THREE.MeshStandardMaterial({
-  color: 0x1a0f08, roughness: 0.3, metalness: 0.55,
-});
-const bar = new THREE.Mesh(barGeo, barMat);
+const bar = new THREE.Mesh(barGeo, MAT.woodDark);
 bar.rotation.x = -Math.PI/2;
-bar.position.y = 0;
 bar.castShadow = true;
 bar.receiveShadow = true;
 barGroup.add(bar);
 
-// Bar top — copper-tinted dark marble
-const barTop = new THREE.Mesh(barGeo, new THREE.MeshStandardMaterial({
-  color: 0x3a2818, roughness: 0.15, metalness: 0.55, emissive: 0x1a0e08, emissiveIntensity: 0.4,
-}));
+// Bar TOP — copper-tinted marble
+const barTopGeo = new THREE.ExtrudeGeometry(barShape, { depth: 0.04, bevelEnabled: false });
+const barTop = new THREE.Mesh(barTopGeo, MAT.marble);
 barTop.rotation.x = -Math.PI/2;
 barTop.position.y = barHeight;
-barTop.scale.y = 0.02;
 barGroup.add(barTop);
 
-// Spirit bottles atop the back counter — a row of glowing cylinders
-const bottleMat = new THREE.MeshStandardMaterial({
-  color: 0x6b3a2a, roughness: 0.15, metalness: 0.2, transparent: true, opacity: 0.85,
-  emissive: 0x3a1a0a, emissiveIntensity: 0.4,
-});
-for (let i = 0; i < 16; i++) {
-  const angle = Math.PI + (i / 15) * Math.PI;
-  const bx = Math.cos(angle) * (barRadius - 0.35);
-  const bz = Math.sin(angle) * (barRadius - 0.35);
-  const bottle = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.045, 0.22, 12), bottleMat);
-  bottle.position.set(bx, barHeight + 0.11, bz);
-  bottle.castShadow = true;
-  barGroup.add(bottle);
+// Bar UNDER-EDGE LED (LED strip along outer front of bar) — bright copper line
+const barLedShape = new THREE.Shape();
+barLedShape.absarc(0, 0, barOuter + 0.02, Math.PI, 2*Math.PI, false);
+barLedShape.lineTo(barOuter, 0);
+barLedShape.absarc(0, 0, barOuter, 2*Math.PI, Math.PI, true);
+barLedShape.lineTo(-(barOuter + 0.02), 0);
+const barLedGeo = new THREE.ExtrudeGeometry(barLedShape, { depth: 0.02, bevelEnabled: false });
+const barLed = new THREE.Mesh(barLedGeo, new THREE.MeshBasicMaterial({
+  color: 0xC89B6C, transparent: true, opacity: 0.8,
+}));
+barLed.rotation.x = -Math.PI/2;
+barLed.position.y = 0.5;
+barGroup.add(barLed);
+
+// BOTTLE SHELVES on the back wall behind the bar — curved row of bottles
+const bottleGroup = new THREE.Group();
+for (let i = 0; i < 60; i++) {
+  const angle = Math.PI + (i / 59) * Math.PI;
+  const r = 4.5;
+  const x = Math.cos(angle) * r;
+  const z = Math.sin(angle) * r;
+  if (z < 0) continue;
+  const h = 0.22 + Math.random() * 0.12;
+  const w = 0.05 + Math.random() * 0.025;
+  const bottleMat = (i % 3 === 0) ? MAT.glassAmber :
+                    (i % 3 === 1) ? MAT.glassClear :
+                    new THREE.MeshStandardMaterial({
+                      color: 0x4a3a26, roughness: 0.15, metalness: 0.2,
+                      transparent: true, opacity: 0.78,
+                      emissive: 0x2a2010, emissiveIntensity: 0.5,
+                    });
+  const b = new THREE.Mesh(new THREE.CylinderGeometry(w, w * 1.1, h, 10), bottleMat);
+  b.position.set(x, 1.5 + Math.random() * 0.5, z);
+  b.castShadow = false;
+  bottleGroup.add(b);
+}
+// also row 2
+for (let i = 0; i < 50; i++) {
+  const angle = Math.PI + (i / 49) * Math.PI;
+  const r = 4.6;
+  const x = Math.cos(angle) * r;
+  const z = Math.sin(angle) * r;
+  if (z < 0) continue;
+  const h = 0.18 + Math.random() * 0.08;
+  const w = 0.045 + Math.random() * 0.02;
+  const b = new THREE.Mesh(new THREE.CylinderGeometry(w, w * 1.05, h, 8),
+    new THREE.MeshStandardMaterial({
+      color: 0x5a3a20, roughness: 0.2, metalness: 0.15,
+      transparent: true, opacity: 0.7,
+      emissive: 0x2a1808, emissiveIntensity: 0.45,
+    }));
+  b.position.set(x, 2.05 + Math.random() * 0.3, z);
+  bottleGroup.add(b);
+}
+barGroup.add(bottleGroup);
+
+// Bottle shelf back-light strips (warm uplight)
+const bottleShelfLight1 = new THREE.PointLight(0xffaa66, 1.2, 7, 1.8);
+bottleShelfLight1.position.set(-2.5, 1.6, 0.6);
+barGroup.add(bottleShelfLight1);
+const bottleShelfLight2 = new THREE.PointLight(0xffaa66, 1.2, 7, 1.8);
+bottleShelfLight2.position.set(2.5, 1.6, 0.6);
+barGroup.add(bottleShelfLight2);
+const bottleShelfLight3 = new THREE.PointLight(0xffaa66, 1.0, 6, 1.8);
+bottleShelfLight3.position.set(0, 1.6, 1.0);
+barGroup.add(bottleShelfLight3);
+
+// Bar working area: small tools on the bar top
+function addBarTool(x, z, h, w, mat) {
+  const tool = new THREE.Mesh(new THREE.CylinderGeometry(w, w, h, 10), mat);
+  tool.position.set(x, barHeight + h/2, z);
+  tool.castShadow = true;
+  barGroup.add(tool);
+}
+addBarTool(-1.5, -2.5, 0.25, 0.06, MAT.copper);  // shaker
+addBarTool(-0.8, -2.7, 0.18, 0.07, MAT.copper);  // jigger
+addBarTool(0.0, -2.6, 0.12, 0.08, MAT.copper);   // muddler base
+addBarTool(0.8, -2.7, 0.22, 0.05, MAT.copper);   // stirrer
+addBarTool(1.6, -2.5, 0.20, 0.07, MAT.copper);   // ice bucket
+
+// =================================================================
+// BACK-OF-HOUSE — back kitchen + back door (top-right area, behind bar)
+// =================================================================
+// Partition wall separating BOH from main room (along z = 11.2, x = 2.5 to 4.5)
+const bohWall = new THREE.Mesh(new THREE.BoxGeometry(1.5, H, 0.1), MAT.wallDark);
+bohWall.position.set(3.7, H/2, 11.2);
+scene.add(bohWall);
+const bohWall2 = new THREE.Mesh(new THREE.BoxGeometry(0.1, H, 2.0), MAT.wallDark);
+bohWall2.position.set(2.95, H/2, 11.5);
+scene.add(bohWall2);
+
+// =================================================================
+// WINE CELLAR — long vertical glowing case on the left wall
+// =================================================================
+const cellarGroup = new THREE.Group();
+cellarGroup.position.set(-W/2 + 0.2, 0, 6);
+scene.add(cellarGroup);
+
+// Cellar case body — tall narrow box
+const cellarBox = new THREE.Mesh(
+  new THREE.BoxGeometry(0.35, 2.0, 6.5),
+  new THREE.MeshStandardMaterial({
+    color: 0x1a0e0e, roughness: 0.4, metalness: 0.3,
+    emissive: 0x2a1606, emissiveIntensity: 0.3,
+  })
+);
+cellarBox.position.set(0, 1.05, 0);
+cellarBox.castShadow = true;
+cellarGroup.add(cellarBox);
+
+// Cellar inner glow (emissive plane facing into room)
+const cellarGlow = new THREE.Mesh(
+  new THREE.PlaneGeometry(6.3, 1.6),
+  new THREE.MeshBasicMaterial({
+    color: 0x8a4818, transparent: true, opacity: 0.5,
+  })
+);
+cellarGlow.position.set(0.18, 1.1, 0);
+cellarGlow.rotation.y = Math.PI/2;
+cellarGroup.add(cellarGlow);
+
+// Many bottles in cellar — rows of cylinders behind glass
+for (let row = 0; row < 4; row++) {
+  for (let col = 0; col < 30; col++) {
+    const z = -3.0 + col * 0.21 + (row % 2 === 0 ? 0 : 0.1);
+    const y = 0.45 + row * 0.4;
+    const bot = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.06, 0.07, 0.28, 8),
+      new THREE.MeshStandardMaterial({
+        color: (row % 2 === 0) ? 0x4a2812 : 0x6b3a18,
+        roughness: 0.2, metalness: 0.15,
+        emissive: 0x4a2810, emissiveIntensity: 0.6,
+      })
+    );
+    bot.position.set(0.13, y, z);
+    bot.rotation.z = Math.PI/2;  // lay bottles on their sides
+    bot.castShadow = false;
+    cellarGroup.add(bot);
+  }
 }
 
-// Wine cabinet behind the bar — tall glass case glowing warm
-const cabinetMat = new THREE.MeshStandardMaterial({
-  color: 0x1a0e0a, roughness: 0.1, metalness: 0.4,
-  emissive: 0x6b3a1a, emissiveIntensity: 0.7, transparent: true, opacity: 0.85,
-});
-const cabinet = new THREE.Mesh(new THREE.BoxGeometry(3.8, 1.8, 0.4), cabinetMat);
-cabinet.position.set(-1.2, 1.2, 1.4);   // a bit left of bar center, deeper than bar
-cabinet.castShadow = true;
-barGroup.add(cabinet);
+// Wood frame around cellar
+const cellarFrame = new THREE.Mesh(
+  new THREE.BoxGeometry(0.05, 2.1, 6.6),
+  MAT.woodDark
+);
+cellarFrame.position.set(0.18, 1.05, 0);
+cellarGroup.add(cellarFrame);
 
-// Music control console
-const consoleMat = new THREE.MeshStandardMaterial({ color: 0x2a1a0a, roughness: 0.4, metalness: 0.35 });
-const console_ = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.4, 0.4), consoleMat);
-console_.position.set(1.3, 0.9, 1.5);
-console_.castShadow = true;
-barGroup.add(console_);
-// small green/red LEDs on console
-const ledMat1 = new THREE.MeshBasicMaterial({ color: 0xc89b6c });
-for (let i = 0; i < 4; i++) {
-  const led = new THREE.Mesh(new THREE.SphereGeometry(0.012, 8, 8), ledMat1);
-  led.position.set(1.0 + i * 0.18, 1.05, 1.31);
-  barGroup.add(led);
-}
+// Cellar light source
+const cellarLight = new THREE.PointLight(0xffaa66, 1.5, 8, 1.6);
+cellarLight.position.set(0, 1.5, 0);
+cellarGroup.add(cellarLight);
+const cellarLight2 = new THREE.PointLight(0xffaa66, 1.2, 6, 1.8);
+cellarLight2.position.set(0, 1.5, -2.5);
+cellarGroup.add(cellarLight2);
+const cellarLight3 = new THREE.PointLight(0xffaa66, 1.2, 6, 1.8);
+cellarLight3.position.set(0, 1.5, 2.5);
+cellarGroup.add(cellarLight3);
 
-// Speakers — two big floor-stand boxes flanking the bar, facing the room
-const spkMat = new THREE.MeshStandardMaterial({ color: 0x140a08, roughness: 0.55, metalness: 0.25 });
-function makeSpeaker(x) {
+// =================================================================
+// BATHROOM — enclosed corner room (bottom-right, x=2.5..4.5, z=0..1.8)
+// =================================================================
+const bathWall1 = new THREE.Mesh(new THREE.BoxGeometry(0.1, H, 1.9), MAT.wallDark);
+bathWall1.position.set(2.55, H/2, 0.95);
+scene.add(bathWall1);
+const bathWall2 = new THREE.Mesh(new THREE.BoxGeometry(2.05, H, 0.1), MAT.wallDark);
+bathWall2.position.set(3.55, H/2, 1.85);
+scene.add(bathWall2);
+// vestibule divider (interior)
+const bathDiv = new THREE.Mesh(new THREE.BoxGeometry(0.06, H * 0.85, 0.9), MAT.wallDark);
+bathDiv.position.set(3.4, H * 0.425, 1.4);
+scene.add(bathDiv);
+
+// =================================================================
+// SPEAKERS — two main speakers at MID-room (z=6.5), flanking the listener triangle
+// Sweet spot apex points toward VIP (z=2.6)
+// =================================================================
+function makeSpeaker(x, z, faceTarget) {
   const grp = new THREE.Group();
-  const body = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.2, 0.4), spkMat);
-  body.position.y = 0.6;
+  // body
+  const body = new THREE.Mesh(
+    new THREE.BoxGeometry(0.42, 1.05, 0.36),
+    new THREE.MeshStandardMaterial({ color: 0x120708, roughness: 0.55 })
+  );
+  body.position.y = 0.525;
   body.castShadow = true;
   grp.add(body);
-  // cones (two drivers)
-  const coneMat = new THREE.MeshStandardMaterial({ color: 0x0a0608, roughness: 0.9 });
-  const tweet = new THREE.Mesh(new THREE.CircleGeometry(0.07, 24), coneMat);
-  tweet.position.set(0, 1.05, 0.21);
-  grp.add(tweet);
-  const woof = new THREE.Mesh(new THREE.CircleGeometry(0.16, 32), coneMat);
-  woof.position.set(0, 0.7, 0.21);
+  // top dome (tweeter)
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(0.05, 16, 16),
+    new THREE.MeshStandardMaterial({ color: 0x0a0608, roughness: 0.9 }));
+  dome.position.set(0, 0.95, 0.181);
+  grp.add(dome);
+  // mid driver
+  const mid = new THREE.Mesh(new THREE.CircleGeometry(0.085, 24),
+    new THREE.MeshStandardMaterial({ color: 0x0a0608, roughness: 0.9 }));
+  mid.position.set(0, 0.78, 0.181);
+  grp.add(mid);
+  // woof
+  const woof = new THREE.Mesh(new THREE.CircleGeometry(0.14, 32),
+    new THREE.MeshStandardMaterial({ color: 0x0a0608, roughness: 0.9 }));
+  woof.position.set(0, 0.5, 0.181);
   grp.add(woof);
-  // copper trim
-  const trimMat = new THREE.MeshStandardMaterial({ color: 0xC89B6C, roughness: 0.3, metalness: 0.8 });
-  const tweetRing = new THREE.Mesh(new THREE.RingGeometry(0.07, 0.085, 24), trimMat);
-  tweetRing.position.set(0, 1.05, 0.211);
-  grp.add(tweetRing);
-  const woofRing = new THREE.Mesh(new THREE.RingGeometry(0.16, 0.18, 32), trimMat);
-  woofRing.position.set(0, 0.7, 0.211);
-  grp.add(woofRing);
-  grp.position.x = x;
+  // copper trim around woof
+  const ring = new THREE.Mesh(
+    new THREE.RingGeometry(0.14, 0.155, 32),
+    MAT.copper
+  );
+  ring.position.set(0, 0.5, 0.182);
+  grp.add(ring);
+  const ringMid = new THREE.Mesh(
+    new THREE.RingGeometry(0.085, 0.097, 24),
+    MAT.copper
+  );
+  ringMid.position.set(0, 0.78, 0.182);
+  grp.add(ringMid);
+  // pedestal
+  const ped = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.12, 0.25, 16),
+    MAT.woodDark);
+  ped.position.y = -0.125;
+  ped.castShadow = true;
+  grp.add(ped);
+
+  grp.position.set(x, 0.25, z);
+  // rotate to face target
+  const target = new THREE.Vector3(faceTarget.x, 0.25, faceTarget.z);
+  grp.lookAt(target);
   return grp;
 }
-const spkL = makeSpeaker(-3.0);
-spkL.position.z = 11.5;
-spkL.rotation.y = 0.25;
+
+const VIP_CENTER = new THREE.Vector3(0, 0, 2.6);
+const spkL = makeSpeaker(-3.4, 6.5, VIP_CENTER);
 scene.add(spkL);
-const spkR = makeSpeaker(3.0);
-spkR.position.z = 11.5;
-spkR.rotation.y = -0.25;
+const spkR = makeSpeaker(3.4, 6.5, VIP_CENTER);
 scene.add(spkR);
 
 // =================================================================
-// SEATING — VIP, Solo, Group
+// FURNITURE: factory functions
 // =================================================================
-function makeSofa({ w = 0.9, d = 0.9, h = 0.42, color = 0x6b3a2a, emissive = 0x1a0a04, opacity = 1 }) {
+function makeArmchair({ rotation = 0, position = [0,0,0], color = 0x6b3a26 }) {
   const grp = new THREE.Group();
-  const seatMat = new THREE.MeshStandardMaterial({
-    color, roughness: 0.65, metalness: 0.0, emissive, emissiveIntensity: 0.35,
+  const mat = new THREE.MeshStandardMaterial({
+    color, roughness: 0.6, metalness: 0.0,
+    emissive: 0x1a0a04, emissiveIntensity: 0.22,
   });
+  const baseMat = new THREE.MeshStandardMaterial({ color: 0x1a0e08, roughness: 0.9 });
+
   // seat cushion
-  const seat = new THREE.Mesh(new THREE.BoxGeometry(w, 0.14, d), seatMat);
-  seat.position.y = h - 0.12;
-  seat.castShadow = true;
-  seat.receiveShadow = true;
+  const seat = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.16, 0.85), mat);
+  seat.position.y = 0.4;
+  seat.castShadow = true; seat.receiveShadow = true;
   grp.add(seat);
-  // back
-  const back = new THREE.Mesh(new THREE.BoxGeometry(w, 0.5, 0.12), seatMat);
-  back.position.set(0, h + 0.18, -d/2 + 0.06);
+  // back cushion (taller, slightly angled)
+  const back = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.55, 0.14), mat);
+  back.position.set(0, 0.65, -0.36);
   back.castShadow = true;
   grp.add(back);
-  // arms (only on solo)
-  if (w < 1.0) {
-    const armL = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.35, d - 0.05), seatMat);
-    armL.position.set(-w/2 + 0.05, h + 0.05, 0);
-    grp.add(armL);
-    const armR = armL.clone();
-    armR.position.x = w/2 - 0.05;
-    grp.add(armR);
-  }
-  // base block under seat
-  const base = new THREE.Mesh(new THREE.BoxGeometry(w - 0.04, h - 0.14, d - 0.04),
-    new THREE.MeshStandardMaterial({ color: 0x1a0e08, roughness: 0.9 }));
-  base.position.y = (h - 0.12) / 2;
+  // arms
+  const armL = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.32, 0.85), mat);
+  armL.position.set(-0.37, 0.5, 0);
+  grp.add(armL);
+  const armR = armL.clone();
+  armR.position.x = 0.37;
+  grp.add(armR);
+  // base block
+  const base = new THREE.Mesh(new THREE.BoxGeometry(0.78, 0.32, 0.78), baseMat);
+  base.position.y = 0.16;
   grp.add(base);
+
+  grp.position.set(...position);
+  grp.rotation.y = rotation;
   return grp;
 }
 
-function makeLounger({ w = 1.5, d = 0.8, h = 0.38, color = 0x4a3a5a }) {
+function makeTwoSofa({ rotation = 0, position = [0,0,0], color = 0x6b3a26 }) {
   const grp = new THREE.Group();
-  const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.8, metalness: 0.0 });
-  // wider, lower, no high back — canvas semi-lounger style
-  const seat = new THREE.Mesh(new THREE.BoxGeometry(w, 0.12, d), mat);
-  seat.position.y = h - 0.06;
-  seat.castShadow = true;
-  seat.receiveShadow = true;
+  const mat = new THREE.MeshStandardMaterial({
+    color, roughness: 0.6, metalness: 0.0,
+    emissive: 0x1a0a04, emissiveIntensity: 0.22,
+  });
+  const baseMat = new THREE.MeshStandardMaterial({ color: 0x1a0e08, roughness: 0.9 });
+
+  const seat = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.16, 0.85), mat);
+  seat.position.y = 0.4;
+  seat.castShadow = true; seat.receiveShadow = true;
   grp.add(seat);
-  // sloped back
-  const back = new THREE.Mesh(new THREE.BoxGeometry(w, 0.4, 0.1), mat);
-  back.position.set(0, h + 0.18, -d/2 + 0.05);
-  back.rotation.x = -0.15;
+  const back = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.55, 0.14), mat);
+  back.position.set(0, 0.65, -0.36);
   back.castShadow = true;
   grp.add(back);
+  // arms
+  const armL = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.32, 0.85), mat);
+  armL.position.set(-0.74, 0.5, 0);
+  grp.add(armL);
+  const armR = armL.clone();
+  armR.position.x = 0.74;
+  grp.add(armR);
   // base
-  const base = new THREE.Mesh(new THREE.BoxGeometry(w - 0.05, h - 0.1, d - 0.05),
-    new THREE.MeshStandardMaterial({ color: 0x1a0e1a, roughness: 0.9 }));
-  base.position.y = (h - 0.1) / 2;
+  const base = new THREE.Mesh(new THREE.BoxGeometry(1.52, 0.32, 0.78), baseMat);
+  base.position.y = 0.16;
   grp.add(base);
+
+  grp.position.set(...position);
+  grp.rotation.y = rotation;
   return grp;
 }
 
-function makeTable({ w = 0.45, d = 0.45, h = 0.45, color = 0x1a0e08 }) {
+function makeRoundTable({ position = [0,0,0], r = 0.32, h = 0.45 }) {
   const grp = new THREE.Group();
-  const top = new THREE.Mesh(new THREE.BoxGeometry(w, 0.04, d),
-    new THREE.MeshStandardMaterial({ color, roughness: 0.3, metalness: 0.5 }));
+  const top = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 0.04, 32), MAT.marble);
   top.position.y = h;
-  top.castShadow = true;
-  top.receiveShadow = true;
+  top.castShadow = true; top.receiveShadow = true;
   grp.add(top);
-  // single pedestal
-  const ped = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, h, 12),
-    new THREE.MeshStandardMaterial({ color: 0x0e0608, roughness: 0.85 }));
+  const ped = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, h, 16), MAT.woodDark);
   ped.position.y = h/2;
   grp.add(ped);
+  // base disc
+  const baseDisc = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.025, 24), MAT.woodDark);
+  baseDisc.position.y = 0.012;
+  grp.add(baseDisc);
+  grp.position.set(...position);
   return grp;
 }
 
-function makeLamp({ height = 0.42 }) {
+function makeLamp({ position = [0,0,0], height = 0.42, color = 0xffb070 }) {
   const grp = new THREE.Group();
-  // stem
-  const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.02, height, 12),
+  const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.018, height, 12),
     new THREE.MeshStandardMaterial({ color: 0x3a2810, roughness: 0.3, metalness: 0.6 }));
   stem.position.y = height/2;
   grp.add(stem);
-  // shade
-  const shade = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.16, 24, 1, true),
+  const shade = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.17, 24, 1, true),
     new THREE.MeshStandardMaterial({
-      color: 0x6b4220, roughness: 0.5, metalness: 0.3,
-      side: THREE.DoubleSide,
-      emissive: 0xC89B6C, emissiveIntensity: 1.2,
+      color: 0x6b4220, roughness: 0.5, metalness: 0.3, side: THREE.DoubleSide,
+      emissive: 0xC89B6C, emissiveIntensity: 1.4,
     }));
-  shade.position.y = height + 0.07;
+  shade.position.y = height + 0.075;
   grp.add(shade);
-  // glow bulb
-  const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.03, 12, 12),
-    new THREE.MeshBasicMaterial({ color: 0xffd09a }));
-  bulb.position.y = height + 0.02;
+  // inner glow
+  const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.04, 12, 12), MAT.warmBulb);
+  bulb.position.y = height + 0.03;
   grp.add(bulb);
-  // light source
-  const light = new THREE.PointLight(0xffb070, 1.6, 4.5, 1.6);
-  light.position.set(0, height + 0.02, 0);
-  light.castShadow = true;
-  light.shadow.mapSize.width = 256;
-  light.shadow.mapSize.height = 256;
+  // light
+  const light = new THREE.PointLight(color, 1.4, 3.5, 1.7);
+  light.position.y = height + 0.03;
+  light.castShadow = false;  // limit count, perf
   grp.add(light);
+  // glow puddle on the table around the lamp base — sized for visible top-down pools
+  const puddleInner = new THREE.Mesh(
+    new THREE.CircleGeometry(0.32, 32),
+    new THREE.MeshBasicMaterial({
+      color: 0xffb070, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending,
+    })
+  );
+  puddleInner.rotation.x = -Math.PI/2;
+  puddleInner.position.y = 0.001;
+  grp.add(puddleInner);
+  const puddleOuter = new THREE.Mesh(
+    new THREE.CircleGeometry(0.7, 32),
+    new THREE.MeshBasicMaterial({
+      color: 0xC89B6C, transparent: true, opacity: 0.2, blending: THREE.AdditiveBlending,
+    })
+  );
+  puddleOuter.rotation.x = -Math.PI/2;
+  puddleOuter.position.y = 0.0005;
+  grp.add(puddleOuter);
+
+  grp.position.set(...position);
   return grp;
 }
 
-// ---- VIP — two warm chairs + low table at sweet spot (z ~10.5)
-function addVipUnit(x, z) {
-  const s = makeSofa({ w: 0.8, d: 0.9, h: 0.42, color: 0x7a3e26 });
-  s.position.set(x, 0, z);
-  s.rotation.y = Math.PI;  // face entrance
-  scene.add(s);
+function makeLounger({ rotation = 0, position = [0,0,0], color = 0x383040 }) {
+  const grp = new THREE.Group();
+  const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.85, metalness: 0.0 });
+  const baseMat = new THREE.MeshStandardMaterial({ color: 0x1a0e1a, roughness: 0.9 });
+
+  const seat = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.14, 0.8), mat);
+  seat.position.y = 0.36;
+  seat.castShadow = true; seat.receiveShadow = true;
+  grp.add(seat);
+  const back = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.45, 0.12), mat);
+  back.position.set(0, 0.6, -0.34);
+  back.rotation.x = -0.18;
+  back.castShadow = true;
+  grp.add(back);
+  // base
+  const base = new THREE.Mesh(new THREE.BoxGeometry(1.42, 0.28, 0.72), baseMat);
+  base.position.y = 0.14;
+  grp.add(base);
+  // small armrest blocks
+  const armL = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.18, 0.8), mat);
+  armL.position.set(-0.71, 0.48, 0);
+  grp.add(armL);
+  const armR = armL.clone();
+  armR.position.x = 0.71;
+  grp.add(armR);
+
+  grp.position.set(...position);
+  grp.rotation.y = rotation;
+  return grp;
 }
-addVipUnit(-0.7, 10.7);
-addVipUnit(0.7, 10.7);
-// VIP low table + lamp
-const vipTable = makeTable({ w: 0.7, d: 0.45, h: 0.35, color: 0x2a1810 });
-vipTable.position.set(0, 0, 11.4);
-scene.add(vipTable);
-const vipLamp = makeLamp({ height: 0.28 });
-vipLamp.position.set(0, 0.35, 11.4);
-scene.add(vipLamp);
-
-// ---- Solo seating — 6 single warm sofas closer to source (z 6–9)
-const soloPositions = [
-  [-3.0, 6.5],  [-3.0, 7.8], [-3.0, 9.1],
-  [ 3.0, 6.5],  [ 3.0, 7.8], [ 3.0, 9.1],
-];
-soloPositions.forEach(([x, z]) => {
-  const facing = (x < 0) ? Math.PI/2 : -Math.PI/2; // face inward
-  const s = makeSofa({ w: 0.85, d: 0.85, h: 0.42, color: 0x6b3a26 });
-  s.position.set(x, 0, z);
-  s.rotation.y = facing;
-  scene.add(s);
-  // side table + lamp
-  const tableX = x < 0 ? x + 0.7 : x - 0.7;
-  const t = makeTable({ w: 0.35, d: 0.35, h: 0.42 });
-  t.position.set(tableX, 0, z);
-  scene.add(t);
-  const l = makeLamp({ height: 0.34 });
-  l.position.set(tableX, 0.42, z);
-  scene.add(l);
-});
-
-// ---- Group seating — 6 canvas loungers + tables farther from source (z 2–5)
-const groupPairs = [
-  [-2.5, 2.2], [-2.5, 3.8], [-2.5, 5.2],
-  [ 2.5, 2.2], [ 2.5, 3.8], [ 2.5, 5.2],
-];
-groupPairs.forEach(([x, z]) => {
-  const facing = (x < 0) ? Math.PI/2 : -Math.PI/2;
-  const ln = makeLounger({ w: 1.4, d: 0.7, h: 0.38 });
-  ln.position.set(x, 0, z);
-  ln.rotation.y = facing;
-  scene.add(ln);
-  // group table
-  const tableX = x < 0 ? x + 1.1 : x - 1.1;
-  const t = makeTable({ w: 0.6, d: 0.5, h: 0.42 });
-  t.position.set(tableX, 0, z);
-  scene.add(t);
-  const l = makeLamp({ height: 0.4 });
-  l.position.set(tableX, 0.42, z);
-  scene.add(l);
-});
 
 // =================================================================
-// CIRCULATION PATHS — subtle glowing lines on the floor
+// SEATING LAYOUT — matching reference image
+// Main hall: many small clusters of armchairs around round tables
 // =================================================================
-const pathMat = new THREE.MeshBasicMaterial({
-  color: 0xC89B6C, transparent: true, opacity: 0.18,
-});
-function addPath(points, width = 0.06) {
-  const curve = new THREE.CatmullRomCurve3(points);
-  const samples = curve.getPoints(80);
-  for (let i = 0; i < samples.length - 1; i++) {
-    const a = samples[i], b = samples[i + 1];
-    const dx = b.x - a.x, dz = b.z - a.z;
-    const len = Math.hypot(dx, dz);
-    const seg = new THREE.Mesh(new THREE.PlaneGeometry(len, width), pathMat);
-    seg.rotation.x = -Math.PI / 2;
-    seg.rotation.z = -Math.atan2(dz, dx);
-    seg.position.set((a.x + b.x) / 2, 0.012, (a.z + b.z) / 2);
-    scene.add(seg);
-  }
+// ----- ARMCHAIRS + ROUND TABLES (small clusters, scattered)
+// Each cluster: 2 armchairs + 1 small round table + 1 lamp on table
+function placeCluster({ centerX, centerZ, rotation = 0, color = 0x6b3a26 }) {
+  // chair offsets in local frame
+  const half = 0.45;
+  const c1 = new THREE.Vector3(-half, 0, 0);
+  const c2 = new THREE.Vector3(+half, 0, 0);
+  // rotate offsets
+  const rotMat = new THREE.Matrix4().makeRotationY(rotation);
+  c1.applyMatrix4(rotMat); c2.applyMatrix4(rotMat);
+  scene.add(makeArmchair({
+    rotation: rotation + Math.PI/2,
+    position: [centerX + c1.x, 0, centerZ + c1.z],
+    color,
+  }));
+  scene.add(makeArmchair({
+    rotation: rotation - Math.PI/2,
+    position: [centerX + c2.x, 0, centerZ + c2.z],
+    color,
+  }));
+  // table in center
+  scene.add(makeRoundTable({ position: [centerX, 0, centerZ], r: 0.3, h: 0.45 }));
+  // lamp
+  scene.add(makeLamp({ position: [centerX, 0.47, centerZ], height: 0.32 }));
 }
-// Path: entrance -> main hall -> bar
-addPath([
-  new THREE.Vector3(0, 0, 0.3),
-  new THREE.Vector3(0, 0, 1.5),
-  new THREE.Vector3(0.4, 0, 4),
-  new THREE.Vector3(-0.2, 0, 7),
-  new THREE.Vector3(0, 0, 10.5),
-]);
-// Path branch to bathroom (front-left corner)
-addPath([
-  new THREE.Vector3(0, 0, 1.5),
-  new THREE.Vector3(-2, 0, 1.2),
-  new THREE.Vector3(-3.2, 0, 1.0),
-]);
+
+// Clusters scattered around the main hall (avoiding speakers, bar, VIP)
+// Reference shows 6-8 clusters in the main area
+placeCluster({ centerX: -2.7, centerZ: 4.8, rotation: 0,             color: 0x6b3a26 });
+placeCluster({ centerX:  2.7, centerZ: 4.8, rotation: 0,             color: 0x6b3a26 });
+placeCluster({ centerX: -2.7, centerZ: 6.8, rotation: Math.PI/2,     color: 0x6b3a26 });
+placeCluster({ centerX:  2.7, centerZ: 6.8, rotation: -Math.PI/2,    color: 0x6b3a26 });
+placeCluster({ centerX: -1.6, centerZ: 8.4, rotation: 0,             color: 0x5a3022 });
+placeCluster({ centerX:  1.6, centerZ: 8.4, rotation: 0,             color: 0x5a3022 });
+placeCluster({ centerX: -2.7, centerZ: 9.5, rotation: Math.PI,       color: 0x5a3022 });
+placeCluster({ centerX:  2.7, centerZ: 9.5, rotation: Math.PI,       color: 0x5a3022 });
+
+// A couple of 2-seat sofas near the bar (to fill the space, facing inward)
+scene.add(makeTwoSofa({
+  rotation: Math.PI,
+  position: [-1.6, 0, 7.5],
+  color: 0x6b3a26,
+}));
+scene.add(makeRoundTable({ position: [-1.6, 0, 6.85], r: 0.32 }));
+scene.add(makeLamp({ position: [-1.6, 0.47, 6.85], height: 0.34 }));
+
+scene.add(makeTwoSofa({
+  rotation: Math.PI,
+  position: [1.6, 0, 7.5],
+  color: 0x6b3a26,
+}));
+scene.add(makeRoundTable({ position: [1.6, 0, 6.85], r: 0.32 }));
+scene.add(makeLamp({ position: [1.6, 0.47, 6.85], height: 0.34 }));
+
+// Loungers around the perimeter — a couple along the walls
+scene.add(makeLounger({ rotation: -Math.PI/2, position: [-3.5, 0, 4.5], color: 0x4a3a5a }));
+scene.add(makeLounger({ rotation: -Math.PI/2, position: [-3.5, 0, 6.0], color: 0x4a3a5a }));
+scene.add(makeLounger({ rotation:  Math.PI/2, position: [ 3.5, 0, 4.5], color: 0x4a3a5a }));
+scene.add(makeLounger({ rotation:  Math.PI/2, position: [ 3.5, 0, 6.0], color: 0x4a3a5a }));
 
 // =================================================================
-// ENTRANCE — floor logo + plants
+// VIP — semicircle of velvet sofas at z=2.6, opening UPWARD toward speakers
 // =================================================================
+const vipGroup = new THREE.Group();
+vipGroup.position.set(0, 0, 2.6);
+scene.add(vipGroup);
+
+// Curved sofa segments arranged in a semicircle of radius 1.8, opening upward (+z)
+const vipRadius = 1.9;
+const vipSegments = 5;
+for (let i = 0; i < vipSegments; i++) {
+  const angle = -Math.PI/2 - Math.PI/3 + (i / (vipSegments - 1)) * (Math.PI * 2/3);
+  // angle goes from lower-left to lower-right
+  const px = Math.cos(angle) * vipRadius;
+  const pz = Math.sin(angle) * vipRadius;
+  // tangent rotation so sofa faces center (0,0)
+  const facing = Math.atan2(-pz, -px) + Math.PI/2;
+  const sofa = makeTwoSofa({
+    rotation: facing,
+    position: [px, 0, pz],
+    color: 0x4a2840,
+  });
+  // tighter/smaller for VIP, override
+  sofa.scale.set(0.85, 1, 0.85);
+  vipGroup.add(sofa);
+}
+
+// VIP coffee table at center
+const vipTable = makeRoundTable({ position: [0, 0, 0], r: 0.55, h: 0.4 });
+vipGroup.add(vipTable);
+// candles/lamps on VIP table
+vipGroup.add(makeLamp({ position: [-0.25, 0.42, -0.15], height: 0.22 }));
+vipGroup.add(makeLamp({ position: [ 0.25, 0.42,  0.15], height: 0.22 }));
+vipGroup.add(makeLamp({ position: [ 0.0,  0.42,  0.30], height: 0.22 }));
+
+// Extra accent lights
+const vipAccent = new THREE.PointLight(0x9c6fb0, 1.0, 4.5, 2);
+vipAccent.position.set(0, 1.6, 2.6);
+scene.add(vipAccent);
+
+// =================================================================
+// ENTRANCE — bottom-left corner, with floor logo + plants
+// =================================================================
+// Floor logo at entrance (vinyl + clock motif)
 const logoGroup = new THREE.Group();
-logoGroup.position.set(0, 0.015, 0.7);
+logoGroup.position.set(-2.8, 0.012, 0.85);
 scene.add(logoGroup);
-const logoOuter = new THREE.Mesh(
-  new THREE.RingGeometry(0.48, 0.52, 64),
-  new THREE.MeshBasicMaterial({ color: 0xC89B6C, transparent: true, opacity: 0.55 })
+const logoRing = new THREE.Mesh(
+  new THREE.RingGeometry(0.45, 0.50, 64),
+  new THREE.MeshBasicMaterial({ color: 0xC89B6C, transparent: true, opacity: 0.6 })
 );
-logoOuter.rotation.x = -Math.PI / 2;
-logoGroup.add(logoOuter);
-const logoInner = new THREE.Mesh(
-  new THREE.RingGeometry(0.18, 0.20, 48),
-  new THREE.MeshBasicMaterial({ color: 0xC89B6C, transparent: true, opacity: 0.4 })
+logoRing.rotation.x = -Math.PI/2;
+logoGroup.add(logoRing);
+const logoRing2 = new THREE.Mesh(
+  new THREE.RingGeometry(0.22, 0.24, 48),
+  new THREE.MeshBasicMaterial({ color: 0xC89B6C, transparent: true, opacity: 0.45 })
 );
-logoInner.rotation.x = -Math.PI / 2;
-logoGroup.add(logoInner);
+logoRing2.rotation.x = -Math.PI/2;
+logoGroup.add(logoRing2);
 const logoDot = new THREE.Mesh(
-  new THREE.CircleGeometry(0.04, 24),
+  new THREE.CircleGeometry(0.05, 32),
+  new THREE.MeshBasicMaterial({ color: 0xC89B6C, transparent: true, opacity: 0.75 })
+);
+logoDot.rotation.x = -Math.PI/2;
+logoGroup.add(logoDot);
+// Two clock hands on the logo
+const logoHandH = new THREE.Mesh(
+  new THREE.PlaneGeometry(0.04, 0.18),
   new THREE.MeshBasicMaterial({ color: 0xC89B6C, transparent: true, opacity: 0.7 })
 );
-logoDot.rotation.x = -Math.PI / 2;
-logoGroup.add(logoDot);
+logoHandH.rotation.x = -Math.PI/2;
+logoHandH.position.y = 0.001;
+logoHandH.rotation.z = -0.6;
+logoHandH.position.set(0.04, 0.001, -0.08);
+logoGroup.add(logoHandH);
+const logoHandM = new THREE.Mesh(
+  new THREE.PlaneGeometry(0.025, 0.28),
+  new THREE.MeshBasicMaterial({ color: 0xC89B6C, transparent: true, opacity: 0.7 })
+);
+logoHandM.rotation.x = -Math.PI/2;
+logoHandM.position.y = 0.001;
+logoHandM.rotation.z = 0.2;
+logoHandM.position.set(0.03, 0.001, -0.10);
+logoGroup.add(logoHandM);
 
-// Plants — leafy cylindrical clusters at entrance corners
+// Plants flanking entrance
 function makePlant() {
   const grp = new THREE.Group();
-  const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.25, 0.35, 16),
-    new THREE.MeshStandardMaterial({ color: 0x1a0a0a, roughness: 0.8 }));
+  const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.26, 0.35, 16),
+    new THREE.MeshStandardMaterial({ color: 0x180a08, roughness: 0.8 }));
   pot.position.y = 0.175;
   pot.castShadow = true;
   grp.add(pot);
-  // leaves — bunch of cones (broad-leaf plant)
   const leafMat = new THREE.MeshStandardMaterial({
-    color: 0x2d3f24, roughness: 0.75, metalness: 0.0,
-    emissive: 0x141a10, emissiveIntensity: 0.2,
+    color: 0x2a3a1f, roughness: 0.75, metalness: 0.0,
+    emissive: 0x10180c, emissiveIntensity: 0.2,
   });
-  for (let i = 0; i < 14; i++) {
-    const len = 0.45 + Math.random() * 0.4;
-    const leaf = new THREE.Mesh(new THREE.ConeGeometry(0.06, len, 6),
-      leafMat);
+  for (let i = 0; i < 18; i++) {
+    const len = 0.45 + Math.random() * 0.5;
+    const leaf = new THREE.Mesh(new THREE.ConeGeometry(0.06, len, 5), leafMat);
     leaf.position.set(
-      (Math.random() - 0.5) * 0.18,
-      0.35 + len/2 - 0.1,
-      (Math.random() - 0.5) * 0.18
+      (Math.random() - 0.5) * 0.22,
+      0.35 + len/2 - 0.08,
+      (Math.random() - 0.5) * 0.22
     );
-    leaf.rotation.x = (Math.random() - 0.5) * 0.7;
-    leaf.rotation.z = (Math.random() - 0.5) * 0.7;
+    leaf.rotation.x = (Math.random() - 0.5) * 0.8;
+    leaf.rotation.z = (Math.random() - 0.5) * 0.8;
     leaf.castShadow = true;
     grp.add(leaf);
   }
   return grp;
 }
 const plant1 = makePlant();
-plant1.position.set(-2.6, 0, 0.7);
+plant1.position.set(-4.2, 0, 0.5);
 scene.add(plant1);
 const plant2 = makePlant();
-plant2.position.set(2.6, 0, 0.7);
+plant2.position.set(-4.2, 0, 1.4);
 scene.add(plant2);
+const plant3 = makePlant();
+plant3.position.set(-1.5, 0, 0.5);
+scene.add(plant3);
+
+// Entrance accent spotlight on logo
+const entryLight = new THREE.SpotLight(0xC89B6C, 1.6, 4, Math.PI/6, 0.45, 1.6);
+entryLight.position.set(-2.8, 2.5, 0.85);
+entryLight.target.position.set(-2.8, 0, 0.85);
+scene.add(entryLight);
+scene.add(entryLight.target);
 
 // =================================================================
-// VINYL STORAGE WALL — left side
+// AMBIENT + GLOBAL LIGHTS
 // =================================================================
-const vinylShelfMat = new THREE.MeshStandardMaterial({
-  color: 0x1a1010, roughness: 0.65, metalness: 0.1,
-  emissive: 0x4a2810, emissiveIntensity: 0.15,
-});
-const vinylShelf = new THREE.Mesh(new THREE.BoxGeometry(0.15, 1.8, 4.5), vinylShelfMat);
-vinylShelf.position.set(-3.92, 0.9, 7);
-vinylShelf.castShadow = true;
-scene.add(vinylShelf);
-// vinyl record spines on the shelf — series of vertical thin slats
-const spineMat = new THREE.MeshStandardMaterial({ color: 0x2a1610, roughness: 0.9 });
-for (let i = 0; i < 60; i++) {
-  const spine = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.45, 0.05), spineMat);
-  spine.position.set(-3.84, 0.5 + Math.floor(i/30) * 0.5, 5 + (i % 30) * 0.13);
-  scene.add(spine);
-}
-
-// =================================================================
-// LIGHTING — global
-// =================================================================
-// Subtle hemispheric — dim lavender from above, warm copper from floor reflection
-const hemi = new THREE.HemisphereLight(0x6b4a8c, 0x2a1810, 0.25);
+const hemi = new THREE.HemisphereLight(0x6b4a8c, 0x1a0e08, 0.22);
 scene.add(hemi);
 
-// Cove fill lights — perimeter lavender lights to wash walls upward
-const coveFill1 = new THREE.PointLight(0x8a6fcc, 0.7, 8);
-coveFill1.position.set(0, H - 0.2, 1);
+// Cove perimeter fill lights
+const coveFill1 = new THREE.PointLight(0x8a6fcc, 0.7, 10);
+coveFill1.position.set(0, H - 0.2, 0.5);
 scene.add(coveFill1);
-const coveFill2 = new THREE.PointLight(0x8a6fcc, 0.7, 8);
-coveFill2.position.set(0, H - 0.2, 13);
+const coveFill2 = new THREE.PointLight(0x8a6fcc, 0.6, 10);
+coveFill2.position.set(0, H - 0.2, D - 0.5);
 scene.add(coveFill2);
-const coveFill3 = new THREE.PointLight(0x8a6fcc, 0.5, 7);
-coveFill3.position.set(-3.7, H - 0.2, 7);
+const coveFill3 = new THREE.PointLight(0x8a6fcc, 0.55, 9);
+coveFill3.position.set(-W/2 + 0.5, H - 0.2, 9);
 scene.add(coveFill3);
-const coveFill4 = new THREE.PointLight(0x8a6fcc, 0.5, 7);
-coveFill4.position.set(3.7, H - 0.2, 7);
+const coveFill4 = new THREE.PointLight(0x8a6fcc, 0.55, 9);
+coveFill4.position.set(W/2 - 0.5, H - 0.2, 9);
 scene.add(coveFill4);
+const coveFill5 = new THREE.PointLight(0x8a6fcc, 0.55, 9);
+coveFill5.position.set(W/2 - 0.5, H - 0.2, 3);
+scene.add(coveFill5);
 
-// Bar spotlight — copper-warm focused beam onto bartender area
-const barSpot = new THREE.SpotLight(0xffaa66, 2.2, 6, Math.PI/5, 0.4, 1.5);
-barSpot.position.set(0, H - 0.1, 11);
-barSpot.target.position.set(0, 0.8, 12.5);
+// Bar spotlight — strong copper wash on the bartender
+const barSpot = new THREE.SpotLight(0xffaa66, 2.4, 7, Math.PI/4.5, 0.4, 1.4);
+barSpot.position.set(0, H - 0.1, 10);
+barSpot.target.position.set(0, 0.8, 11.5);
 barSpot.castShadow = true;
-barSpot.shadow.mapSize.width = 512;
-barSpot.shadow.mapSize.height = 512;
 scene.add(barSpot);
 scene.add(barSpot.target);
 
-// Entrance accent — soft cool light on the floor logo
-const logoLight = new THREE.SpotLight(0xC89B6C, 1.0, 4, Math.PI/6, 0.5, 2);
-logoLight.position.set(0, 2.5, 0.7);
-logoLight.target.position.set(0, 0, 0.7);
-scene.add(logoLight);
-scene.add(logoLight.target);
+// Hall ceiling soft fill (subtle)
+const hallFill = new THREE.PointLight(0x5a3a78, 0.55, 12, 1.5);
+hallFill.position.set(0, H - 0.5, 6);
+scene.add(hallFill);
+
+// Top-down "studio" light — only ON in topdown mode, fills the room
+// so the floor plan reads clearly without baking the perspective views.
+const topdownStudio = new THREE.DirectionalLight(0xffe6c0, 0.0);
+topdownStudio.position.set(0, 18, D/2);
+topdownStudio.target.position.set(0, 0, D/2);
+topdownStudio.userData.studioLight = true;
+scene.add(topdownStudio);
+scene.add(topdownStudio.target);
+const topdownAmbient = new THREE.AmbientLight(0x9c7faa, 0.0);
+topdownAmbient.userData.studioLight = true;
+scene.add(topdownAmbient);
 
 // =================================================================
 // CAMERA VIEW PRESETS + UI
 // =================================================================
 const views = {
-  entrance: { pos: [0, 1.55, 0.6], look: [0, 1.3, 8] },
-  bar:      { pos: [0, 1.6, 9], look: [0, 1.1, 13.5] },
-  vip:      { pos: [2.4, 1.3, 8], look: [-0.5, 0.6, 11.5] },
-  solo:     { pos: [-1.5, 1.4, 5], look: [-3, 0.5, 8] },
-  group:    { pos: [1.5, 1.4, 7], look: [-2.5, 0.5, 3.5] },
-  topdown:  { pos: [0, 11, 7], look: [0, 0, 7] },
-  hero:     { pos: [-3.2, 2.4, 1.2], look: [1.5, 0.6, 12] },
+  topdown:  { type: 'ortho', size: 7.5, pos: [0, 18, D/2], look: [0, 0, D/2] },
+  hero:     { type: 'pers', pos: [-4.0, 3.0, 0.5], look: [1.5, 0.5, 10] },
+  entrance: { type: 'pers', pos: [-3.0, 1.55, 0.4], look: [0.5, 1.3, 10] },
+  bar:      { type: 'pers', pos: [0, 1.55, 7], look: [0, 1.1, 12] },
+  vip:      { type: 'pers', pos: [0, 1.3, 4.4], look: [0, 0.6, 2.5] },
+  hall:     { type: 'pers', pos: [-3.5, 1.7, 4.0], look: [2.5, 0.8, 8.5] },
 };
-let currentView = 'entrance';
+let currentView = 'topdown';
 
-function setView(name) {
+function setTopdownHidden(hidden) {
+  scene.traverse(obj => {
+    if (obj.userData && obj.userData.hideInTopdown) {
+      obj.visible = !hidden;
+    }
+    if (obj.userData && obj.userData.studioLight) {
+      if (obj.isDirectionalLight) obj.intensity = hidden ? 4.5 : 0;
+      if (obj.isAmbientLight)     obj.intensity = hidden ? 2.2 : 0;
+    }
+  });
+  renderer.toneMappingExposure = hidden ? 2.2 : 1.1;
+  scene.fog = hidden ? null : new THREE.FogExp2(0x09060f, 0.038);
+}
+
+function applyView(name, instant = false) {
   const v = views[name];
   if (!v) return;
   currentView = name;
-  // animate
-  const startPos = camera.position.clone();
-  const startLook = controls.target.clone();
-  const endPos = new THREE.Vector3(...v.pos);
-  const endLook = new THREE.Vector3(...v.look);
-  const t0 = performance.now();
-  const dur = 900;
-  function step() {
-    const t = Math.min(1, (performance.now() - t0) / dur);
-    const e = t * t * (3 - 2 * t); // smoothstep
-    camera.position.lerpVectors(startPos, endPos, e);
-    controls.target.lerpVectors(startLook, endLook, e);
-    if (t < 1) requestAnimationFrame(step);
+  if (v.type === 'ortho') {
+    activeCam = orthoCam;
+    controls.enabled = false;
+    const a = window.innerWidth / window.innerHeight;
+    // Camera looks straight down (forward = -y). With rotation.set(-π/2, 0, 0):
+    //   world -x → screen LEFT  ✓  (wine cellar left, bathroom right)
+    //   world -z → screen UP    ✗  (would put entrance on top)
+    // We want bar (large z) at top, so flip the projection vertically.
+    orthoCam.left = -v.size * a;
+    orthoCam.right = v.size * a;
+    orthoCam.top = -v.size;     // flipped
+    orthoCam.bottom = v.size;   // flipped
+    orthoCam.position.set(...v.pos);
+    orthoCam.rotation.set(-Math.PI/2, 0, 0);
+    orthoCam.updateProjectionMatrix();
+    setTopdownHidden(true);
+  } else {
+    activeCam = persCam;
+    controls.enabled = true;
+    setTopdownHidden(false);
+    if (instant) {
+      persCam.position.set(...v.pos);
+      controls.target.set(...v.look);
+      controls.update();
+    } else {
+      const startPos = persCam.position.clone();
+      const startLook = controls.target.clone();
+      const endPos = new THREE.Vector3(...v.pos);
+      const endLook = new THREE.Vector3(...v.look);
+      const t0 = performance.now();
+      const dur = 900;
+      function step() {
+        const t = Math.min(1, (performance.now() - t0) / dur);
+        const e = t * t * (3 - 2 * t);
+        persCam.position.lerpVectors(startPos, endPos, e);
+        controls.target.lerpVectors(startLook, endLook, e);
+        if (t < 1) requestAnimationFrame(step);
+      }
+      step();
+    }
   }
-  step();
-  // update UI
   document.querySelectorAll('.views button').forEach(b => {
     b.classList.toggle('on', b.dataset.view === name);
   });
 }
 
 document.querySelectorAll('.views button').forEach(b => {
-  b.addEventListener('click', () => setView(b.dataset.view));
+  b.addEventListener('click', () => applyView(b.dataset.view));
 });
 
 // Expose for headless capture
 window.cam = {
-  setView,
-  setViewInstant(name) {
-    const v = views[name];
-    if (!v) return;
-    camera.position.set(...v.pos);
-    controls.target.set(...v.look);
-    controls.update();
-  },
+  setView: applyView,
+  setViewInstant(name) { applyView(name, true); },
 };
 
-setView('entrance');
+applyView('topdown', true);
 
 // =================================================================
 // RESIZE + LOOP
 // =================================================================
 window.addEventListener('resize', () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
+  const a = window.innerWidth / window.innerHeight;
+  persCam.aspect = a;
+  persCam.updateProjectionMatrix();
+  const v = views[currentView];
+  if (v && v.type === 'ortho') {
+    orthoCam.left = -v.size * a;
+    orthoCam.right = v.size * a;
+    orthoCam.updateProjectionMatrix();
+  }
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
 const clock = new THREE.Clock();
 function animate() {
   requestAnimationFrame(animate);
-  controls.update();
-  // gentle ceiling vinyl drift
+  if (activeCam === persCam) controls.update();
   const t = clock.getElapsedTime();
-  discGroup.rotation.y = t * 0.05;
-  renderer.render(scene, camera);
+  discGroup.rotation.y = t * 0.04;
+  renderer.render(scene, activeCam);
 }
 animate();
 
-// signal ready for headless screenshot tool
+// signal ready for headless capture
 window.sceneReady = true;
 </script>
 
