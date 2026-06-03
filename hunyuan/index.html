@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>黑胶上的威士忌 · Hunyuan3D 模型库</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@300;400&family=Cormorant+Garamond:ital,wght@0,300;1,300&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet" />
+  <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+  <style>
+    :root {
+      --ink-1: #0E0716; --plum: #1A0E2E; --plum-2: #2D1B4E;
+      --smoke: #6B4A8C; --mist: #B8A0D8; --paper: #E8DDF0;
+      --paper-dim: #C4B5D4; --copper: #C89B6C;
+      --rule: rgba(184,160,216,0.18);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--ink-1); color: var(--paper);
+      font-family: "Noto Serif SC", "PingFang SC", serif; font-weight: 300; }
+    header {
+      padding: 50px 6vw 24px; border-bottom: 1px solid var(--rule);
+      max-width: 1400px; margin: 0 auto;
+    }
+    h1 { font-family: "Ma Shan Zheng", cursive; font-weight: 400;
+      font-size: 42px; margin: 0; letter-spacing: 0.06em; }
+    .sub { font-family: "Cormorant Garamond", serif; font-style: italic;
+      font-size: 14px; color: var(--paper-dim); letter-spacing: 0.3em; text-transform: uppercase; margin-top: 6px; }
+    .intro { max-width: 700px; margin: 18px 0 0; font-size: 14px; color: var(--paper-dim); line-height: 1.7; }
+    .intro b { color: var(--copper); font-weight: 400; }
+    .grid {
+      max-width: 1400px; margin: 0 auto;
+      padding: 30px 6vw 80px;
+      display: grid; gap: 30px;
+      grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+    }
+    @media (max-width: 540px) { .grid { grid-template-columns: 1fr; gap: 20px; padding: 20px; } }
+    .card {
+      background: var(--plum); border: 1px solid var(--rule);
+      border-radius: 6px; overflow: hidden;
+      display: flex; flex-direction: column;
+    }
+    model-viewer {
+      width: 100%; height: 380px;
+      background: linear-gradient(135deg, #15092A 0%, #07040E 100%);
+      --poster-color: transparent;
+    }
+    .caption { padding: 18px 20px 22px; border-top: 1px solid var(--rule); }
+    .caption h2 {
+      font-family: "Noto Serif SC", serif; font-weight: 400;
+      font-size: 16px; margin: 0 0 6px; letter-spacing: 0.1em; color: var(--paper);
+    }
+    .caption .meta {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 10px; letter-spacing: 0.18em;
+      color: var(--copper); text-transform: uppercase;
+    }
+    .caption .desc {
+      font-size: 13px; color: var(--paper-dim);
+      margin: 10px 0 0; line-height: 1.6;
+    }
+    footer {
+      text-align: center; padding: 40px 6vw 80px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px; letter-spacing: 0.2em; color: var(--paper-dim);
+      border-top: 1px solid var(--rule);
+      max-width: 1400px; margin: 0 auto;
+    }
+    a.back { color: var(--copper); text-decoration: none; }
+    a.back:hover { color: var(--mist); }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>黑胶上的威士忌 · Hunyuan3D 模型库</h1>
+  <div class="sub">SPATIAL MODELS · GENERATED FROM AI IMAGES</div>
+  <p class="intro">
+    每个模型由 <b>Tencent Hunyuan3D-2</b>(开源 AI 3D 生成模型)从对应的 AI 实景图生成而来。
+    全部可旋转 / 缩放,在你下面任意一个 viewer 里拖动就能看。每个模型约 5-15 MB,首次加载稍慢。
+  </p>
+</header>
+
+<div class="grid">
+
+  <div class="card">
+    <model-viewer src="01-hero-room.glb" alt="主视图" camera-controls touch-action="pan-y" loading="eager" reveal="auto"
+      auto-rotate auto-rotate-delay="1500" rotation-per-second="20deg"
+      shadow-intensity="0.6" exposure="1.1" environment-image="neutral">
+    </model-viewer>
+    <div class="caption">
+      <div class="meta">01 · HERO</div>
+      <h2>主视图 · 整体空间</h2>
+      <p class="desc">圆弧瓶墙 + 紫绒沙发 + 暖光底灯。整间小酒吧的 3D 还原。</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <model-viewer src="03-bar-arc.glb" alt="吧台" camera-controls touch-action="pan-y" loading="eager" reveal="auto"
+      auto-rotate auto-rotate-delay="1500" rotation-per-second="20deg"
+      shadow-intensity="0.6" exposure="1.1" environment-image="neutral">
+    </model-viewer>
+    <div class="caption">
+      <div class="meta">03 · BAR</div>
+      <h2>调酒区 · 圆弧吧台</h2>
+      <p class="desc">大理石台面 + 底部铜光 LED + 五层瓶墙背光。</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <model-viewer src="04-vip-velvet.glb" alt="VIP" camera-controls touch-action="pan-y" loading="eager" reveal="auto"
+      auto-rotate auto-rotate-delay="1500" rotation-per-second="20deg"
+      shadow-intensity="0.6" exposure="1.1" environment-image="neutral">
+    </model-viewer>
+    <div class="caption">
+      <div class="meta">04 · VIP</div>
+      <h2>VIP 区 · 紫绒圆弧</h2>
+      <p class="desc">半圆紫绒沙发包围 + 中央圆桌 + 两盏铜烛灯。</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <model-viewer src="06-wine-cellar.glb" alt="酒柜" camera-controls touch-action="pan-y" loading="eager" reveal="auto"
+      auto-rotate auto-rotate-delay="1500" rotation-per-second="20deg"
+      shadow-intensity="0.6" exposure="1.1" environment-image="neutral">
+    </model-viewer>
+    <div class="caption">
+      <div class="meta">06 · CELLAR</div>
+      <h2>酒柜墙 · 横向陈列</h2>
+      <p class="desc">瓶身横向陈列 + 背光透出。</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <model-viewer src="07-solo-room.glb" alt="独处区" camera-controls touch-action="pan-y" loading="eager" reveal="auto"
+      auto-rotate auto-rotate-delay="1500" rotation-per-second="20deg"
+      shadow-intensity="0.6" exposure="1.1" environment-image="neutral">
+    </model-viewer>
+    <div class="caption">
+      <div class="meta">07 · SOLO</div>
+      <h2>独处区 · 单人沙发</h2>
+      <p class="desc">单人紫绒沙发 + 边几台灯 + 一杯威士忌。</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <model-viewer src="08-topdown-room.glb" alt="俯视" camera-controls touch-action="pan-y" loading="eager" reveal="auto"
+      auto-rotate auto-rotate-delay="1500" rotation-per-second="20deg"
+      shadow-intensity="0.6" exposure="1.1" environment-image="neutral">
+    </model-viewer>
+    <div class="caption">
+      <div class="meta">08 · TOPDOWN</div>
+      <h2>俯视沙盘 · 整间还原</h2>
+      <p class="desc">整间小酒吧的微缩沙盘视图,可从任意角度查看布局。</p>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  <a class="back" href="/">← 回到主页</a> &nbsp;&middot;&nbsp;
+  GENERATED BY HUNYUAN3D-2 · TENCENT · OPEN SOURCE
+</footer>
+
+</body>
+</html>
