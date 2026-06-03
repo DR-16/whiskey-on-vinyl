@@ -1,0 +1,630 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>黑胶上的威士忌 · 3D 实景 v4(单件实模整合)</title>
+  <style>
+    html, body { margin: 0; padding: 0; background: #050309; color: #E8DDF0;
+      font-family: "Noto Serif SC", "PingFang SC", serif; font-weight: 300;
+      overflow: hidden; height: 100vh; width: 100vw; }
+    canvas { display: block; }
+    .hud { position: fixed; top: 16px; left: 16px;
+      background: rgba(14,7,22,0.75); border: 1px solid rgba(184,160,216,0.22);
+      padding: 14px 18px; backdrop-filter: blur(10px);
+      z-index: 10; font-size: 13px; letter-spacing: 0.06em; }
+    .hud h1 { margin: 0 0 8px; font-size: 14px; font-weight: 400;
+      color: #B8A0D8; letter-spacing: 0.18em; }
+    .views { display: flex; flex-wrap: wrap; gap: 6px; }
+    .views button { background: transparent; color: #E8DDF0;
+      border: 1px solid rgba(184,160,216,0.25); padding: 6px 12px;
+      font-family: inherit; font-size: 12px; cursor: pointer;
+      letter-spacing: 0.12em; transition: all .25s; }
+    .views button:hover, .views button.on {
+      border-color: #C89B6C; background: rgba(200,155,108,0.15); }
+    .info { position: fixed; bottom: 16px; left: 16px;
+      font-family: "JetBrains Mono", monospace; font-size: 11px;
+      color: #C4B5D4; letter-spacing: 0.15em;
+      background: rgba(14,7,22,0.5); padding: 8px 12px;
+      border: 1px solid rgba(184,160,216,0.15); z-index: 10; }
+    .loader { position: fixed; inset: 0; display: flex; align-items: center;
+      justify-content: center; background: #050309; z-index: 100;
+      color: #C4B5D4; letter-spacing: 0.2em; font-size: 14px;
+      flex-direction: column; gap: 16px; }
+    .loader .bar { width: 200px; height: 2px; background: rgba(184,160,216,0.2); }
+    .loader .bar > div { height: 100%; background: #C89B6C; width: 0%; transition: width .3s; }
+    .loader.hidden { display: none; }
+  </style>
+</head>
+<body>
+
+<div class="loader" id="loader">
+  <div>LOADING REAL MODELS…</div>
+  <div class="bar"><div id="bar-inner"></div></div>
+  <div id="loader-msg" style="font-size:10px;opacity:0.6"></div>
+</div>
+
+<div class="hud">
+  <h1>黑胶上的威士忌 · 3D 实景 v4</h1>
+  <div class="views">
+    <button data-view="hero" class="on">主视图</button>
+    <button data-view="entrance">入口</button>
+    <button data-view="bar">吧台</button>
+    <button data-view="vip">VIP</button>
+    <button data-view="hall">主厅</button>
+    <button data-view="topdown">俯瞰</button>
+  </div>
+</div>
+<div class="info">REAL HUNYUAN3D MODELS · DRAG · ORBIT</div>
+
+<canvas id="scene"></canvas>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+const W = 9.5, D = 12.5, H = 3.0;
+
+// ============================================================
+// RENDERER / SCENE / CAMERAS
+// ============================================================
+const canvas = document.getElementById('scene');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x07040E);
+
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+const aspect = window.innerWidth / window.innerHeight;
+const persCam = new THREE.PerspectiveCamera(45, aspect, 0.05, 80);
+persCam.position.set(-4.0, 2.4, 0.5);
+
+const orthoCam = new THREE.OrthographicCamera(-7.5*aspect, 7.5*aspect, -7.5, 7.5, 0.1, 60);
+orthoCam.position.set(0, 20, D/2);
+orthoCam.rotation.set(-Math.PI/2, 0, 0);
+
+let activeCam = persCam;
+const controls = new OrbitControls(persCam, canvas);
+controls.target.set(1.5, 0.8, 9);
+controls.enableDamping = true;
+controls.maxPolarAngle = Math.PI * 0.495;
+controls.minDistance = 0.6;
+controls.maxDistance = 22;
+
+// Post-processing
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, persCam));
+const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.45, 0.55, 0.86);
+composer.addPass(bloomPass);
+composer.addPass(new OutputPass());
+
+// ============================================================
+// MATERIALS — brand palette for overrides on each GLB
+// ============================================================
+const MAT = {
+  leatherWarm:  new THREE.MeshStandardMaterial({ color: 0x5a2818, roughness: 0.55, metalness: 0.05, envMapIntensity: 0.7 }),
+  velvetVip:    new THREE.MeshStandardMaterial({ color: 0x3a1e36, roughness: 0.78, metalness: 0.0,  envMapIntensity: 0.4 }),
+  marble:       new THREE.MeshStandardMaterial({ color: 0x12080a, roughness: 0.18, metalness: 0.45, envMapIntensity: 0.9 }),
+  brass:        new THREE.MeshStandardMaterial({ color: 0xC89B6C, roughness: 0.25, metalness: 0.85, envMapIntensity: 1.2, emissive: 0x2a1808, emissiveIntensity: 0.45 }),
+  lampShade:    new THREE.MeshStandardMaterial({ color: 0xffd29a, roughness: 0.55, metalness: 0.0,  emissive: 0xffb070, emissiveIntensity: 2.6 }),
+  woodDark:     new THREE.MeshStandardMaterial({ color: 0x180d05, roughness: 0.45, metalness: 0.25, envMapIntensity: 0.6 }),
+  glassAmber:   new THREE.MeshStandardMaterial({ color: 0x9c4818, roughness: 0.08, metalness: 0.25, transparent: true, opacity: 0.88, emissive: 0x6a2a08, emissiveIntensity: 1.1, envMapIntensity: 1.2 }),
+  ceramic:      new THREE.MeshStandardMaterial({ color: 0x180a08, roughness: 0.55, metalness: 0.1, envMapIntensity: 0.4 }),
+  leaf:         new THREE.MeshStandardMaterial({ color: 0x1f2a14, roughness: 0.65, metalness: 0.0, envMapIntensity: 0.3, emissive: 0x080c06, emissiveIntensity: 0.15 }),
+  vinyl:        new THREE.MeshStandardMaterial({ color: 0x0a0612, roughness: 0.32, metalness: 0.55, envMapIntensity: 0.8 }),
+  fabricVelvet: new THREE.MeshStandardMaterial({ color: 0x2a1230, roughness: 0.85, metalness: 0.0, envMapIntensity: 0.3 }),
+  copper:       new THREE.MeshStandardMaterial({ color: 0xC89B6C, roughness: 0.28, metalness: 0.8, envMapIntensity: 1.0, emissive: 0x2a1808, emissiveIntensity: 0.4 }),
+  wallDark:     new THREE.MeshStandardMaterial({ color: 0x110918, roughness: 0.88, metalness: 0.0 }),
+  floorWood:    new THREE.MeshStandardMaterial({ color: 0x261712, roughness: 0.78, metalness: 0.06 }),
+  floorVip:     new THREE.MeshStandardMaterial({ color: 0x150818, roughness: 0.45, metalness: 0.18 }),
+  ceilDark:     new THREE.MeshStandardMaterial({ color: 0x070410, roughness: 0.95 }),
+  coveLav:      new THREE.MeshBasicMaterial({ color: 0xa080cc, transparent: true, opacity: 0.95 }),
+  ledStrip:     new THREE.MeshBasicMaterial({ color: 0xffb070, transparent: true, opacity: 0.85 }),
+  bulb:         new THREE.MeshBasicMaterial({ color: 0xfff0d0 }),
+};
+
+// ============================================================
+// LOAD ALL GLB MODELS, normalize, apply materials
+// ============================================================
+const gltfLoader = new GLTFLoader();
+
+function loadGLB(path) {
+  return new Promise((resolve, reject) => {
+    gltfLoader.load(path, (gltf) => resolve(gltf.scene), undefined, reject);
+  });
+}
+
+function normalize(obj, targetY) {
+  // Wrap in a Group so cloning preserves the normalization offset.
+  // Inner obj is centered on XZ and bottom is at y=0.
+  const box = new THREE.Box3().setFromObject(obj);
+  const size = box.getSize(new THREE.Vector3());
+  const center = box.getCenter(new THREE.Vector3());
+  const scale = targetY / size.y;
+  obj.scale.setScalar(scale);
+  const cs = center.clone().multiplyScalar(scale);
+  obj.position.set(-cs.x, -cs.y, -cs.z);
+  const box2 = new THREE.Box3().setFromObject(obj);
+  obj.position.y -= box2.min.y;
+  const wrap = new THREE.Group();
+  wrap.add(obj);
+  return wrap;
+}
+
+function applyMaterial(obj, material, opts = {}) {
+  obj.traverse(c => {
+    if (c.isMesh) {
+      c.material = material;
+      c.castShadow = opts.castShadow !== false;
+      c.receiveShadow = opts.receiveShadow !== false;
+    }
+  });
+  return obj;
+}
+
+const loaderEl = document.getElementById('loader');
+const barInner = document.getElementById('bar-inner');
+const loaderMsg = document.getElementById('loader-msg');
+
+const MODELS_TO_LOAD = [
+  { key: 'armchair',  path: 'models/armchair-leather-shape.glb',     targetY: 0.92 },
+  { key: 'sofa',      path: 'models/sofa-velvet-curved-shape.glb',   targetY: 0.86 },
+  { key: 'table',     path: 'models/table-round-marble-shape.glb',   targetY: 0.45 },
+  { key: 'lamp',      path: 'models/lamp-copper-shape.glb',          targetY: 0.50 },
+  { key: 'speaker',   path: 'models/speaker-floor-shape.glb',        targetY: 1.10 },
+  { key: 'bottle',    path: 'models/whiskey-bottle-shape.glb',       targetY: 0.30 },
+  { key: 'plant',     path: 'models/plant-pot-shape.glb',            targetY: 1.10 },
+  { key: 'barstool',  path: 'models/bar-stool-shape.glb',            targetY: 0.78 },
+  { key: 'vinyl',     path: 'models/vinyl-record-shape.glb',         targetY: 0.05 },
+  { key: 'rug',       path: 'models/rug-purple-shape.glb',           targetY: 0.04 },
+];
+const MODELS = {};
+
+async function loadAll() {
+  const total = MODELS_TO_LOAD.length;
+  for (let i = 0; i < total; i++) {
+    const m = MODELS_TO_LOAD[i];
+    loaderMsg.textContent = `loading ${m.key} (${i+1}/${total})…`;
+    try {
+      const obj = await loadGLB(m.path);
+      normalize(obj, m.targetY);
+      MODELS[m.key] = obj;
+    } catch (e) {
+      console.error('failed to load', m.path, e);
+    }
+    barInner.style.width = `${((i+1)/total)*100}%`;
+  }
+  loaderEl.classList.add('hidden');
+  buildScene();
+}
+
+// ============================================================
+// ROOM SHELL — walls, floor, ceiling, cove lights
+// ============================================================
+function buildShell() {
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(W, D), MAT.floorWood);
+  floor.rotation.x = -Math.PI/2; floor.position.set(0, 0, D/2);
+  floor.receiveShadow = true; scene.add(floor);
+
+  // VIP floor patch
+  const vipFloor = new THREE.Mesh(new THREE.BoxGeometry(5.6, 0.04, 2.4), MAT.floorVip);
+  vipFloor.position.set(0, 0.02, 2.6); vipFloor.receiveShadow = true;
+  scene.add(vipFloor);
+
+  // walls
+  function makeWall(w, h, mat, depth = 0.08) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, depth), mat);
+    m.receiveShadow = true; return m;
+  }
+  const wB = makeWall(W, H, MAT.wallDark); wB.position.set(0, H/2, D); scene.add(wB);
+  const wF = makeWall(W, H, MAT.wallDark); wF.position.set(0, H/2, 0); scene.add(wF);
+  const wL = makeWall(D, H, MAT.wallDark); wL.position.set(-W/2, H/2, D/2); wL.rotation.y = Math.PI/2; scene.add(wL);
+  const wR = makeWall(D, H, MAT.wallDark); wR.position.set(W/2, H/2, D/2); wR.rotation.y = -Math.PI/2; scene.add(wR);
+
+  // ceiling
+  const ceil = new THREE.Mesh(new THREE.PlaneGeometry(W, D), MAT.ceilDark);
+  ceil.rotation.x = Math.PI/2; ceil.position.set(0, H, D/2);
+  ceil.userData.hideInTopdown = true; scene.add(ceil);
+
+  // cove strips
+  function cove(w, position, rY) {
+    const s = new THREE.Mesh(new THREE.PlaneGeometry(w, 0.08), MAT.coveLav);
+    s.position.copy(position); s.rotation.y = rY;
+    s.userData.hideInTopdown = true; scene.add(s);
+  }
+  cove(W-0.3, new THREE.Vector3(0, H-0.28, 0.06), 0);
+  cove(W-0.3, new THREE.Vector3(0, H-0.28, D-0.06), Math.PI);
+  cove(D-0.3, new THREE.Vector3(-W/2+0.06, H-0.28, D/2), Math.PI/2);
+  cove(D-0.3, new THREE.Vector3(W/2-0.06, H-0.28, D/2), -Math.PI/2);
+
+  // bathroom enclosure (simple)
+  const bw1 = new THREE.Mesh(new THREE.BoxGeometry(0.08, H, 1.9), MAT.wallDark);
+  bw1.position.set(2.55, H/2, 0.95); scene.add(bw1);
+  const bw2 = new THREE.Mesh(new THREE.BoxGeometry(2.05, H, 0.08), MAT.wallDark);
+  bw2.position.set(3.55, H/2, 1.85); scene.add(bw2);
+
+  // back-of-house partition behind bar
+  const boh1 = new THREE.Mesh(new THREE.BoxGeometry(1.5, H, 0.08), MAT.wallDark);
+  boh1.position.set(3.7, H/2, 11.2); scene.add(boh1);
+  const boh2 = new THREE.Mesh(new THREE.BoxGeometry(0.08, H, 2.0), MAT.wallDark);
+  boh2.position.set(2.95, H/2, 11.5); scene.add(boh2);
+}
+
+// ============================================================
+// BAR ARC (kept as Three.js extruded shape)
+// ============================================================
+function buildBar() {
+  const barGroup = new THREE.Group();
+  barGroup.position.set(0, 0, 8.8);
+  scene.add(barGroup);
+  const barOuter = 3.8, barInner = 3.0, barHeight = 1.05;
+  const shape = new THREE.Shape();
+  shape.absarc(0, 0, barOuter, 0, Math.PI, false);
+  shape.lineTo(-barInner, 0);
+  shape.absarc(0, 0, barInner, Math.PI, 0, true);
+  shape.lineTo(barOuter, 0);
+  const geo = new THREE.ExtrudeGeometry(shape, { depth: barHeight, bevelEnabled: true, bevelThickness: 0.02, bevelSize: 0.02, bevelSegments: 2 });
+  const bar = new THREE.Mesh(geo, MAT.woodDark);
+  bar.rotation.x = -Math.PI/2; bar.castShadow = true; bar.receiveShadow = true;
+  barGroup.add(bar);
+  // bar top
+  const topGeo = new THREE.ExtrudeGeometry(shape, { depth: 0.05, bevelEnabled: false });
+  const top = new THREE.Mesh(topGeo, MAT.marble);
+  top.rotation.x = -Math.PI/2; top.position.y = barHeight; barGroup.add(top);
+  // LED under
+  const ledShape = new THREE.Shape();
+  ledShape.absarc(0, 0, barOuter+0.025, 0, Math.PI, false);
+  ledShape.lineTo(-barOuter, 0);
+  ledShape.absarc(0, 0, barOuter, Math.PI, 0, true);
+  ledShape.lineTo(barOuter+0.025, 0);
+  const led = new THREE.Mesh(new THREE.ExtrudeGeometry(ledShape, { depth: 0.025, bevelEnabled: false }), MAT.ledStrip);
+  led.rotation.x = -Math.PI/2; led.position.y = 0.45; barGroup.add(led);
+
+  // bottle wall — instances of the real bottle GLB
+  if (MODELS.bottle) {
+    function shelf(yPos, zPos, count, xSpan) {
+      for (let i = 0; i < count; i++) {
+        const x = -xSpan + (i / (count - 1)) * xSpan * 2;
+        const b = MODELS.bottle.clone(true);
+        applyMaterial(b, MAT.glassAmber);
+        b.position.set(x, yPos, zPos);
+        b.rotation.y = (Math.random() - 0.5) * 0.4;
+        b.scale.multiplyScalar(0.9 + Math.random() * 0.2);
+        barGroup.add(b);
+      }
+      // wooden shelf back
+      const shelfMat = new THREE.MeshStandardMaterial({ color: 0x100805, roughness: 0.6, metalness: 0.2 });
+      const sh = new THREE.Mesh(new THREE.BoxGeometry(6.0, 0.03, 0.36), shelfMat);
+      sh.position.set(0, yPos - 0.02, zPos);
+      sh.castShadow = true; sh.receiveShadow = true;
+      barGroup.add(sh);
+    }
+    shelf(1.30, 2.6, 18, 2.5);
+    shelf(1.75, 2.6, 16, 2.4);
+    shelf(2.20, 2.6, 14, 2.3);
+  }
+
+  // bottle backlight
+  const bl = new THREE.PointLight(0xffaa66, 10.0, 9, 1.6);
+  bl.position.set(0, 1.7, 2.55); barGroup.add(bl);
+
+  // bar tools using real bottles too (small ones on bar top)
+  if (MODELS.bottle) {
+    for (let i = 0; i < 5; i++) {
+      const tool = MODELS.bottle.clone(true);
+      applyMaterial(tool, MAT.brass);
+      tool.position.set(-1.5 + i * 0.7, barHeight + 0.05, 0.5);
+      tool.scale.multiplyScalar(0.7);
+      barGroup.add(tool);
+    }
+  }
+}
+
+// ============================================================
+// SCENE LAYOUT — place real models at floor-plan positions
+// ============================================================
+function placeOnFloor(model, mat, x, z, rotY = 0, scaleMul = 1.0) {
+  const obj = model.clone(true);
+  applyMaterial(obj, mat);
+  obj.position.set(x, 0, z);
+  obj.rotation.y = rotY;
+  if (scaleMul !== 1.0) obj.scale.multiplyScalar(scaleMul);
+  scene.add(obj);
+  return obj;
+}
+
+// Plant decoration (uses plant model, larger scale)
+function placePlant(x, z) {
+  if (!MODELS.plant) return;
+  const p = MODELS.plant.clone(true);
+  // Two materials — pot dark, leaves green. Quick hack: paint whole thing with leaf mat, looks ok.
+  applyMaterial(p, MAT.leaf);
+  p.position.set(x, 0, z);
+  p.rotation.y = Math.random() * Math.PI * 2;
+  scene.add(p);
+}
+
+function buildScene() {
+  buildShell();
+  buildBar();
+
+  // === MAIN HALL: 8 armchairs in 4 clusters of 2 + table + lamp + rug ===
+  const clusters = [
+    { x: -2.7, z: 4.8, rot: 0 },
+    { x:  2.7, z: 4.8, rot: 0 },
+    { x: -2.7, z: 6.8, rot: Math.PI/2 },
+    { x:  2.7, z: 6.8, rot: -Math.PI/2 },
+    { x: -2.7, z: 9.0, rot: Math.PI },
+    { x:  2.7, z: 9.0, rot: Math.PI },
+  ];
+  if (MODELS.armchair && MODELS.table && MODELS.lamp && MODELS.rug) {
+    clusters.forEach(c => {
+      // Rug under cluster
+      placeOnFloor(MODELS.rug, MAT.fabricVelvet, c.x, c.z, c.rot, 1.2);
+      // Two armchairs facing each other across the table
+      const half = 0.55;
+      // local offsets, rotated
+      const rotM = new THREE.Matrix4().makeRotationY(c.rot);
+      const l = new THREE.Vector3(-half, 0, 0).applyMatrix4(rotM);
+      const r = new THREE.Vector3( half, 0, 0).applyMatrix4(rotM);
+      placeOnFloor(MODELS.armchair, MAT.leatherWarm, c.x+l.x, c.z+l.z, c.rot + Math.PI/2);
+      placeOnFloor(MODELS.armchair, MAT.leatherWarm, c.x+r.x, c.z+r.z, c.rot - Math.PI/2);
+      // Table in center
+      placeOnFloor(MODELS.table, MAT.marble, c.x, c.z, 0, 0.7);
+      // Lamp on top of table
+      const lamp = MODELS.lamp.clone(true);
+      applyMaterial(lamp, MAT.brass);
+      // Override the shade with emissive lampShade material — find the topmost child mesh
+      lamp.traverse(node => {
+        if (node.isMesh) {
+          // Apply lampShade to brighter parts; for simplicity tint the whole lamp warmer
+          node.material = MAT.brass;
+        }
+      });
+      lamp.position.set(c.x, 0.48, c.z); // table is ~0.45 tall, lamp sits on top
+      scene.add(lamp);
+      // Add an actual point light at the lamp position
+      const light = new THREE.PointLight(0xffb070, 2.2, 5.5, 1.7);
+      light.position.set(c.x, 0.8, c.z);
+      scene.add(light);
+      // Visible bright "shade" emissive sphere for bloom
+      const shade = new THREE.Mesh(new THREE.SphereGeometry(0.10, 16, 16), MAT.lampShade);
+      shade.position.set(c.x, 0.82, c.z);
+      scene.add(shade);
+    });
+  }
+
+  // === VIP ZONE: 4 velvet sofas in semicircle at z=2.6 ===
+  if (MODELS.sofa && MODELS.table) {
+    const vipR = 1.85;
+    const segments = 4;
+    for (let i = 0; i < segments; i++) {
+      const angle = -Math.PI/2 - Math.PI/3 + (i/(segments-1)) * (Math.PI*2/3);
+      const px = Math.cos(angle) * vipR;
+      const pz = Math.sin(angle) * vipR + 2.6;
+      const facing = Math.atan2(-(pz-2.6), -px) + Math.PI/2;
+      placeOnFloor(MODELS.sofa, MAT.velvetVip, px, pz, facing, 0.7);
+    }
+    // VIP center round table (larger)
+    placeOnFloor(MODELS.table, MAT.marble, 0, 2.6, 0, 0.95);
+    // Three small candle lamps on VIP table
+    if (MODELS.lamp) {
+      for (const [dx, dz] of [[-0.25, -0.15], [0.25, 0.15], [0.0, 0.30]]) {
+        const lamp = MODELS.lamp.clone(true);
+        applyMaterial(lamp, MAT.brass);
+        lamp.position.set(dx, 0.45, 2.6 + dz);
+        lamp.scale.multiplyScalar(0.55);
+        scene.add(lamp);
+        const shade = new THREE.Mesh(new THREE.SphereGeometry(0.07, 12, 12), MAT.lampShade);
+        shade.position.set(dx, 0.62, 2.6 + dz); scene.add(shade);
+      }
+      const vipL = new THREE.PointLight(0xffb070, 3.5, 5, 1.6);
+      vipL.position.set(0, 1.2, 2.6); scene.add(vipL);
+    }
+  }
+
+  // === SPEAKERS: 2 floor speakers mid-room ===
+  if (MODELS.speaker) {
+    const VIP = new THREE.Vector3(0, 0, 2.6);
+    [[-3.4, 6.5], [3.4, 6.5]].forEach(([x, z]) => {
+      const s = MODELS.speaker.clone(true);
+      applyMaterial(s, MAT.woodDark);
+      s.position.set(x, 0, z);
+      // face VIP
+      const dir = new THREE.Vector3(VIP.x - x, 0, VIP.z - z);
+      s.rotation.y = Math.atan2(dir.x, dir.z);
+      scene.add(s);
+    });
+  }
+
+  // === PLANTS: at entrance + corners ===
+  [[-4.2, 0.5], [-4.2, 1.4], [-1.5, 0.5], [-4.3, 5.5]].forEach(([x, z]) => placePlant(x, z));
+
+  // === CEILING VINYL DISC ===
+  if (MODELS.vinyl) {
+    const disc = MODELS.vinyl.clone(true);
+    applyMaterial(disc, MAT.vinyl);
+    disc.position.set(0, H - 0.2, 6.5);
+    disc.scale.setScalar(4.5);
+    disc.userData.hideInTopdown = true;
+    scene.add(disc);
+    // soft purple uplight
+    const dl = new THREE.PointLight(0x9c7ad8, 6.0, 14, 1.6);
+    dl.position.set(0, H - 0.45, 6.5);
+    scene.add(dl);
+  }
+
+  // === ENTRANCE LOGO ===
+  const logoGroup = new THREE.Group();
+  logoGroup.position.set(-2.8, 0.012, 0.85);
+  scene.add(logoGroup);
+  function ring(r1, r2, op) {
+    const m = new THREE.Mesh(new THREE.RingGeometry(r1, r2, 96),
+      new THREE.MeshBasicMaterial({ color: 0xC89B6C, transparent: true, opacity: op, side: THREE.DoubleSide }));
+    m.rotation.x = -Math.PI/2; logoGroup.add(m);
+  }
+  ring(0.45, 0.50, 0.7); ring(0.22, 0.24, 0.55);
+  const dot = new THREE.Mesh(new THREE.CircleGeometry(0.05, 48),
+    new THREE.MeshBasicMaterial({ color: 0xC89B6C, transparent: true, opacity: 0.85 }));
+  dot.rotation.x = -Math.PI/2; logoGroup.add(dot);
+
+  // === LIGHTING ===
+  const hemi = new THREE.HemisphereLight(0xa080d0, 0x2a1808, 0.6);
+  scene.add(hemi);
+  // a strong "sun" so materials are clearly visible
+  const sun = new THREE.DirectionalLight(0xfff0d0, 1.4);
+  sun.position.set(2, 6, 4);
+  scene.add(sun);
+  const sun2 = new THREE.DirectionalLight(0xb0a0d0, 0.6);
+  sun2.position.set(-3, 5, 8);
+  scene.add(sun2);
+  // cove fills
+  for (const [x, y, z] of [[0, H-0.18, 0.6], [0, H-0.18, D-0.6], [-W/2+0.6, H-0.18, 9], [W/2-0.6, H-0.18, 9]]) {
+    const l = new THREE.PointLight(0x9c7ad8, 1.6, 11, 1.7);
+    l.position.set(x, y, z); scene.add(l);
+  }
+  // bar spotlight
+  const bs = new THREE.SpotLight(0xffaa66, 7.0, 7, Math.PI/4.5, 0.4, 1.4);
+  bs.position.set(0, H-0.1, 9.5);
+  bs.target.position.set(0, 0.8, 10.5);
+  bs.castShadow = true;
+  bs.shadow.mapSize.width = 1024; bs.shadow.mapSize.height = 1024;
+  scene.add(bs); scene.add(bs.target);
+  // entrance accent
+  const es = new THREE.SpotLight(0xC89B6C, 4.5, 4, Math.PI/6, 0.5, 1.6);
+  es.position.set(-2.8, 2.6, 0.85);
+  es.target.position.set(-2.8, 0, 0.85);
+  scene.add(es); scene.add(es.target);
+
+  // try HDRI
+  new RGBELoader().load('../scene2/assets/hdri-warm.hdr', (hdri) => {
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    pmrem.compileEquirectangularShader();
+    const env = pmrem.fromEquirectangular(hdri).texture;
+    scene.environment = env;
+    hdri.dispose(); pmrem.dispose();
+  });
+
+  applyView('hero', true);
+  // Debug: expose scene for inspection
+  window.__scene = scene;
+  window.__loaded = Object.keys(MODELS);
+  console.log('scene built. models loaded:', window.__loaded.join(','));
+  console.log('scene children:', scene.children.length);
+  window.sceneReady = true;
+}
+
+// ============================================================
+// CAMERA VIEWS
+// ============================================================
+const views = {
+  hero:     { type: 'pers', pos: [-4.0, 2.4, 0.5], look: [1.5, 0.7, 9] },
+  entrance: { type: 'pers', pos: [-2.5, 1.5, 0.7], look: [0.8, 1.2, 10] },
+  bar:      { type: 'pers', pos: [0, 1.6, 6.5], look: [0, 1.1, 12] },
+  vip:      { type: 'pers', pos: [-0.2, 1.4, 5.5], look: [0, 0.5, 2.6] },
+  hall:     { type: 'pers', pos: [-3.6, 1.7, 3.8], look: [2.5, 0.7, 8.0] },
+  topdown:  { type: 'ortho', size: 7.5, pos: [0, 20, D/2] },
+};
+let currentView = 'hero';
+
+function setTopdownHidden(hidden) {
+  scene.traverse(obj => {
+    if (obj.userData && obj.userData.hideInTopdown) obj.visible = !hidden;
+  });
+  bloomPass.strength = hidden ? 0.85 : 0.45;
+  bloomPass.threshold = hidden ? 0.6 : 0.86;
+  renderer.toneMappingExposure = hidden ? 1.8 : 1.05;
+}
+
+function applyView(name, instant = false) {
+  const v = views[name];
+  if (!v) return;
+  currentView = name;
+  if (v.type === 'ortho') {
+    activeCam = orthoCam;
+    controls.enabled = false;
+    const a = window.innerWidth / window.innerHeight;
+    orthoCam.left = -v.size * a; orthoCam.right = v.size * a;
+    orthoCam.top = -v.size; orthoCam.bottom = v.size;
+    orthoCam.position.set(...v.pos);
+    orthoCam.rotation.set(-Math.PI/2, 0, 0);
+    orthoCam.updateProjectionMatrix();
+    composer.passes[0].camera = orthoCam;
+    setTopdownHidden(true);
+  } else {
+    activeCam = persCam;
+    controls.enabled = true;
+    composer.passes[0].camera = persCam;
+    setTopdownHidden(false);
+    if (instant) {
+      persCam.position.set(...v.pos);
+      controls.target.set(...v.look);
+      controls.update();
+    } else {
+      const sp = persCam.position.clone(), sl = controls.target.clone();
+      const ep = new THREE.Vector3(...v.pos), el = new THREE.Vector3(...v.look);
+      const t0 = performance.now(), dur = 1000;
+      function step() {
+        const t = Math.min(1, (performance.now()-t0)/dur);
+        const e = t*t*(3-2*t);
+        persCam.position.lerpVectors(sp, ep, e);
+        controls.target.lerpVectors(sl, el, e);
+        if (t < 1) requestAnimationFrame(step);
+      }
+      step();
+    }
+  }
+  document.querySelectorAll('.views button').forEach(b => b.classList.toggle('on', b.dataset.view === name));
+}
+
+document.querySelectorAll('.views button').forEach(b => b.addEventListener('click', () => applyView(b.dataset.view)));
+window.cam = { setView: applyView, setViewInstant(n){ applyView(n, true); },
+  free(px,py,pz, lx,ly,lz) { persCam.position.set(px,py,pz); controls.target.set(lx,ly,lz); controls.update(); }
+};
+
+// resize + loop
+window.addEventListener('resize', () => {
+  const a = window.innerWidth / window.innerHeight;
+  persCam.aspect = a; persCam.updateProjectionMatrix();
+  const v = views[currentView];
+  if (v && v.type === 'ortho') {
+    orthoCam.left = -v.size * a; orthoCam.right = v.size * a;
+    orthoCam.updateProjectionMatrix();
+  }
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  composer.setSize(window.innerWidth, window.innerHeight);
+});
+
+function animate() {
+  requestAnimationFrame(animate);
+  if (activeCam === persCam) controls.update();
+  composer.render();
+}
+animate();
+
+loadAll();
+</script>
+
+</body>
+</html>
