@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>黑胶上的威士忌 · 整体 3D(Google model-viewer)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@300;400&family=Cormorant+Garamond:ital,wght@0,300;1,300&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet" />
+  <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+  <style>
+    :root {
+      --ink-1: #0E0716; --plum: #1A0E2E; --plum-2: #2D1B4E;
+      --smoke: #6B4A8C; --mist: #B8A0D8; --paper: #E8DDF0;
+      --paper-dim: #C4B5D4; --copper: #C89B6C;
+      --rule: rgba(184,160,216,0.18);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--ink-1); color: var(--paper);
+      font-family: "Noto Serif SC", "PingFang SC", serif; font-weight: 300;
+      overflow: hidden; height: 100vh; width: 100vw; }
+    .hud {
+      position: fixed; top: 16px; left: 16px;
+      background: rgba(14,7,22,0.75); border: 1px solid rgba(184,160,216,0.22);
+      padding: 14px 18px; backdrop-filter: blur(12px);
+      z-index: 10; font-size: 13px;
+    }
+    .hud h1 {
+      margin: 0 0 4px; font-size: 18px; font-weight: 400;
+      font-family: "Ma Shan Zheng", cursive; color: var(--paper); letter-spacing: 0.08em;
+    }
+    .hud .sub {
+      font-family: "Cormorant Garamond", serif; font-style: italic;
+      font-size: 11px; color: var(--paper-dim); letter-spacing: 0.3em; text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+    .views { display: flex; flex-wrap: wrap; gap: 6px; }
+    .views button {
+      background: transparent; color: var(--paper);
+      border: 1px solid rgba(184,160,216,0.25);
+      padding: 6px 12px; font-family: inherit; font-size: 12px;
+      cursor: pointer; letter-spacing: 0.12em; transition: all .25s;
+    }
+    .views button:hover, .views button.on {
+      border-color: var(--copper); background: rgba(200,155,108,0.15);
+    }
+    .info {
+      position: fixed; bottom: 16px; left: 16px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px; color: var(--paper-dim); letter-spacing: 0.18em;
+      background: rgba(14,7,22,0.55);
+      padding: 8px 12px; border: 1px solid rgba(184,160,216,0.15);
+      z-index: 10;
+    }
+    .back-link {
+      position: fixed; top: 16px; right: 16px;
+      z-index: 10; font-family: "JetBrains Mono", monospace;
+      font-size: 11px; letter-spacing: 0.18em; color: var(--copper);
+      text-decoration: none; padding: 8px 12px;
+      background: rgba(14,7,22,0.55); border: 1px solid var(--copper);
+    }
+    .back-link:hover { background: rgba(200,155,108,0.2); }
+    model-viewer {
+      width: 100vw; height: 100vh;
+      background: radial-gradient(ellipse at center, #1A0E2E 0%, #07040E 80%);
+      --poster-color: transparent;
+    }
+    .loading-overlay {
+      position: fixed; inset: 0;
+      display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 14px;
+      background: rgba(7,4,14,0.85); z-index: 50;
+      color: var(--paper-dim); letter-spacing: 0.25em; font-size: 13px;
+      pointer-events: none;
+    }
+    .loading-overlay.hidden { display: none; }
+    .loading-overlay .bar { width: 220px; height: 2px; background: rgba(184,160,216,0.2); }
+    .loading-overlay .bar > div { height: 100%; background: var(--copper); width: 0%; transition: width 0.3s; }
+    .loading-overlay .pct { font-family: "JetBrains Mono", monospace; font-size: 11px; color: var(--copper); }
+  </style>
+</head>
+<body>
+
+<div class="hud">
+  <h1>黑胶上的威士忌 · 完整 3D 实景</h1>
+  <div class="sub">RENDERED BY GOOGLE MODEL-VIEWER · FILAMENT ENGINE</div>
+  <div class="views">
+    <button data-orbit="0deg 75deg 18m" class="on">主视图</button>
+    <button data-orbit="0deg 80deg 7m">入口侧</button>
+    <button data-orbit="180deg 75deg 8m">吧台侧</button>
+    <button data-orbit="0deg 60deg 10m">VIP 半圆</button>
+    <button data-orbit="90deg 70deg 10m">主厅侧</button>
+    <button data-orbit="0deg 0deg 18m">俯瞰</button>
+  </div>
+</div>
+
+<a class="back-link" href="/">← 回主页</a>
+<div class="info">DRAG · ORBIT &nbsp;|&nbsp; SCROLL · ZOOM &nbsp;|&nbsp; FULL SCENE 16 MODELS</div>
+
+<div class="loading-overlay" id="loader">
+  <div>LOADING SCENE …</div>
+  <div class="bar"><div id="bar-inner"></div></div>
+  <div class="pct" id="loader-pct">0%</div>
+  <div style="font-size:9px;opacity:0.5;letter-spacing:0.2em;">FIRST LOAD ~70 MB · 30-90 s</div>
+</div>
+
+<model-viewer
+  id="mv"
+  src="scene-merged.glb"
+  alt="黑胶上的威士忌 完整 3D 场景"
+  camera-controls
+  touch-action="pan-y"
+  loading="eager"
+  reveal="auto"
+  auto-rotate
+  auto-rotate-delay="2000"
+  rotation-per-second="6deg"
+  shadow-intensity="0.6"
+  shadow-softness="0.7"
+  exposure="1.0"
+  tone-mapping="aces"
+  environment-image="../scene2/assets/hdri-warm.hdr"
+  skybox-image=""
+  camera-orbit="0deg 75deg 18m"
+  field-of-view="38deg"
+  min-camera-orbit="auto auto 3m"
+  max-camera-orbit="auto auto 30m">
+</model-viewer>
+
+<script>
+  const mv = document.getElementById('mv');
+  const loader = document.getElementById('loader');
+  const bar = document.getElementById('bar-inner');
+  const pct = document.getElementById('loader-pct');
+
+  mv.addEventListener('progress', (e) => {
+    const p = Math.round(e.detail.totalProgress * 100);
+    bar.style.width = p + '%';
+    pct.textContent = p + '%';
+    if (p >= 100) {
+      setTimeout(() => loader.classList.add('hidden'), 400);
+    }
+  });
+  mv.addEventListener('load', () => loader.classList.add('hidden'));
+
+  document.querySelectorAll('.views button').forEach(b => {
+    b.addEventListener('click', () => {
+      mv.cameraOrbit = b.dataset.orbit;
+      document.querySelectorAll('.views button').forEach(x => x.classList.toggle('on', x === b));
+    });
+  });
+</script>
+
+</body>
+</html>
