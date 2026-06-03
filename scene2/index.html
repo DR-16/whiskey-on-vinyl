@@ -1,0 +1,1015 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>黑胶上的威士忌 · 3D 实景</title>
+  <style>
+    html, body { margin: 0; padding: 0; background: #050309; color: #E8DDF0;
+      font-family: "Noto Serif SC", "PingFang SC", serif;
+      overflow: hidden; height: 100vh; width: 100vw; }
+    canvas { display: block; }
+    .hud {
+      position: fixed; top: 16px; left: 16px;
+      background: rgba(14,7,22,0.7);
+      border: 1px solid rgba(184,160,216,0.18);
+      padding: 14px 18px;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      z-index: 10; font-size: 13px; letter-spacing: 0.06em;
+    }
+    .hud h1 { margin: 0 0 8px; font-size: 14px; font-weight: 400; color: #B8A0D8; letter-spacing: 0.18em; }
+    .views { display: flex; flex-wrap: wrap; gap: 6px; }
+    .views button {
+      background: transparent; color: #E8DDF0;
+      border: 1px solid rgba(184,160,216,0.25);
+      padding: 6px 12px; font-family: inherit; font-size: 12px;
+      cursor: pointer; letter-spacing: 0.12em; transition: all .25s;
+    }
+    .views button:hover, .views button.on {
+      border-color: #C89B6C; background: rgba(200,155,108,0.15);
+    }
+    .info {
+      position: fixed; bottom: 16px; left: 16px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px; color: #C4B5D4; letter-spacing: 0.15em;
+      background: rgba(14,7,22,0.5);
+      padding: 8px 12px; border: 1px solid rgba(184,160,216,0.15);
+      z-index: 10;
+    }
+    .loader {
+      position: fixed; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: #050309; z-index: 100;
+      color: #C4B5D4; letter-spacing: 0.2em; font-size: 14px;
+    }
+    .loader.hidden { display: none; }
+  </style>
+</head>
+<body>
+
+<div class="loader" id="loader">LOADING ENVIRONMENT…</div>
+
+<div class="hud">
+  <h1>黑胶上的威士忌 · 3D 实景 v2</h1>
+  <div class="views">
+    <button data-view="hero" class="on">主视图</button>
+    <button data-view="entrance">入口</button>
+    <button data-view="bar">吧台</button>
+    <button data-view="vip">VIP</button>
+    <button data-view="hall">主厅</button>
+    <button data-view="cellar">酒柜</button>
+    <button data-view="topdown">俯瞰</button>
+  </div>
+</div>
+<div class="info">DRAG · ORBIT &nbsp;|&nbsp; SCROLL · ZOOM &nbsp;|&nbsp; PBR + HDRI + BLOOM</div>
+
+<canvas id="scene"></canvas>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+// ============================================================
+// CONSTANTS
+// ============================================================
+const W = 9.5;   // room width (x: -4.75 .. 4.75)
+const D = 12.5;  // room depth (z: 0 entrance .. 12.5 bar)
+const H = 3.0;   // ceiling
+
+// ============================================================
+// RENDERER / SCENE / CAMERAS
+// ============================================================
+const canvas = document.getElementById('scene');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x07040E);
+
+const renderer = new THREE.WebGLRenderer({
+  canvas, antialias: true,
+  powerPreference: 'high-performance',
+});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+const aspect = window.innerWidth / window.innerHeight;
+const persCam = new THREE.PerspectiveCamera(45, aspect, 0.05, 80);
+persCam.position.set(-3.5, 2.6, 0.6);
+
+const orthoSize = 7.5;
+const orthoCam = new THREE.OrthographicCamera(
+  -orthoSize * aspect, orthoSize * aspect, orthoSize, -orthoSize, 0.1, 60
+);
+orthoCam.position.set(0, 20, D/2);
+
+let activeCam = persCam;
+
+const controls = new OrbitControls(persCam, canvas);
+controls.target.set(1.5, 0.8, 9);
+controls.enableDamping = true;
+controls.dampingFactor = 0.06;
+controls.maxPolarAngle = Math.PI * 0.495;
+controls.minDistance = 0.6;
+controls.maxDistance = 22;
+
+// ============================================================
+// POST-PROCESSING
+// ============================================================
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, persCam));
+const bloomPass = new UnrealBloomPass(
+  new THREE.Vector2(window.innerWidth, window.innerHeight),
+  0.45, 0.55, 0.88
+);
+composer.addPass(bloomPass);
+composer.addPass(new OutputPass());
+
+// ============================================================
+// ASSET LOADERS — HDRI environment + PBR textures
+// ============================================================
+const loadingMgr = new THREE.LoadingManager();
+loadingMgr.onLoad = () => {
+  document.getElementById('loader').classList.add('hidden');
+};
+
+const texLoader = new THREE.TextureLoader(loadingMgr);
+const hdrLoader = new RGBELoader(loadingMgr);
+
+// HDRI environment map (provides reflections + ambient)
+const pmrem = new THREE.PMREMGenerator(renderer);
+pmrem.compileEquirectangularShader();
+hdrLoader.load('assets/hdri-warm.hdr', (hdri) => {
+  const envMap = pmrem.fromEquirectangular(hdri).texture;
+  scene.environment = envMap;
+  hdri.dispose(); pmrem.dispose();
+});
+
+// Wood floor PBR textures
+function loadFloorTex() {
+  const t = (path) => {
+    const tex = texLoader.load(`assets/${path}`);
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(3, 5);
+    return tex;
+  };
+  const diffuse = t('wood-diffuse.jpg');
+  diffuse.colorSpace = THREE.SRGBColorSpace;
+  const bump = t('wood-bump.jpg');
+  const rough = t('wood-roughness.jpg');
+  return { diffuse, bump, rough };
+}
+const floorTex = loadFloorTex();
+
+// ============================================================
+// MATERIALS
+// ============================================================
+const MAT = {
+  floor: new THREE.MeshStandardMaterial({
+    map: floorTex.diffuse,
+    color: 0x4a3528,   // tint darker, warm
+    roughness: 0.85,
+    metalness: 0.05,
+    envMapIntensity: 0.45,
+  }),
+  floorVip: new THREE.MeshStandardMaterial({
+    color: 0x1a0e22, roughness: 0.4, metalness: 0.15,
+    envMapIntensity: 0.55,
+  }),
+  wall: new THREE.MeshStandardMaterial({
+    color: 0x1a1018, roughness: 0.85, metalness: 0.02, envMapIntensity: 0.3,
+  }),
+  ceil: new THREE.MeshStandardMaterial({
+    color: 0x09060f, roughness: 0.92, metalness: 0.0,
+  }),
+  leatherWarm: new THREE.MeshStandardMaterial({
+    color: 0x5a2418, roughness: 0.62, metalness: 0.05,
+    envMapIntensity: 0.5,
+  }),
+  velvetVip: new THREE.MeshStandardMaterial({
+    color: 0x3a1e36, roughness: 0.85, metalness: 0.0,
+    envMapIntensity: 0.35,
+  }),
+  velvetVipBack: new THREE.MeshStandardMaterial({
+    color: 0x2f1828, roughness: 0.88, metalness: 0.0,
+  }),
+  canvasGroup: new THREE.MeshStandardMaterial({
+    color: 0x322a38, roughness: 0.88, metalness: 0.0,
+  }),
+  woodDark: new THREE.MeshStandardMaterial({
+    color: 0x180d05, roughness: 0.45, metalness: 0.3, envMapIntensity: 0.55,
+  }),
+  marble: new THREE.MeshStandardMaterial({
+    color: 0x0e0508, roughness: 0.22, metalness: 0.4,
+    envMapIntensity: 0.55,
+  }),
+  copper: new THREE.MeshStandardMaterial({
+    color: 0xC89B6C, roughness: 0.22, metalness: 0.85,
+    envMapIntensity: 1.4,
+    emissive: 0x2a1808, emissiveIntensity: 0.5,
+  }),
+  copperEmissive: new THREE.MeshBasicMaterial({
+    color: 0xffb070,
+  }),
+  glassAmber: new THREE.MeshStandardMaterial({
+    color: 0x9c4818, roughness: 0.08, metalness: 0.25,
+    transparent: true, opacity: 0.88,
+    emissive: 0x6a2a08, emissiveIntensity: 1.1,
+    envMapIntensity: 1.2,
+  }),
+  glassClear: new THREE.MeshStandardMaterial({
+    color: 0x3a2618, roughness: 0.06, metalness: 0.25,
+    transparent: true, opacity: 0.82,
+    emissive: 0x4a3220, emissiveIntensity: 0.95,
+    envMapIntensity: 1.2,
+  }),
+  lampShade: new THREE.MeshStandardMaterial({
+    color: 0xffd09a, roughness: 0.6, metalness: 0.0,
+    emissive: 0xffb070, emissiveIntensity: 2.6,
+    side: THREE.DoubleSide,
+  }),
+  lampBulb: new THREE.MeshBasicMaterial({ color: 0xfff0d0 }),
+  coveLav: new THREE.MeshBasicMaterial({
+    color: 0xa080cc, transparent: true, opacity: 0.95,
+  }),
+  ledStrip: new THREE.MeshBasicMaterial({
+    color: 0xffb070, transparent: true, opacity: 0.85,
+  }),
+};
+
+// ============================================================
+// ROOM SHELL — floor, walls, ceiling
+// ============================================================
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(W, D, 32, 48), MAT.floor);
+floor.rotation.x = -Math.PI / 2;
+floor.position.set(0, 0, D / 2);
+floor.receiveShadow = true;
+scene.add(floor);
+
+// VIP floor patch — deeper tone, slightly elevated
+const vipFloor = new THREE.Mesh(new RoundedBoxGeometry(5.6, 0.04, 2.4, 4, 0.05), MAT.floorVip);
+vipFloor.position.set(0, 0.02, 2.6);
+vipFloor.receiveShadow = true;
+scene.add(vipFloor);
+
+// Walls — back, front, left, right (use thin boxes so they cast/receive shadows)
+function makeWall(w, h, mat, depth = 0.08) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, depth), mat);
+  m.receiveShadow = true;
+  return m;
+}
+const wBack  = makeWall(W, H, MAT.wall);  wBack.position.set(0, H/2, D);     scene.add(wBack);
+const wFront = makeWall(W, H, MAT.wall);  wFront.position.set(0, H/2, 0);    scene.add(wFront);
+const wLeft  = makeWall(D, H, MAT.wall);  wLeft.position.set(-W/2, H/2, D/2); wLeft.rotation.y = Math.PI/2; scene.add(wLeft);
+const wRight = makeWall(D, H, MAT.wall);  wRight.position.set(W/2, H/2, D/2); wRight.rotation.y = -Math.PI/2; scene.add(wRight);
+
+// Ceiling
+const ceil = new THREE.Mesh(new THREE.PlaneGeometry(W, D), MAT.ceil);
+ceil.rotation.x = Math.PI / 2;
+ceil.position.set(0, H, D / 2);
+scene.add(ceil);
+ceil.userData.hideInTopdown = true;
+
+// ============================================================
+// PERIMETER COVE LIGHT STRIPS (lavender)
+// ============================================================
+function addCoveStrip(w, position, rotationY) {
+  const strip = new THREE.Mesh(new THREE.PlaneGeometry(w, 0.08), MAT.coveLav);
+  strip.position.copy(position);
+  strip.rotation.y = rotationY;
+  strip.userData.hideInTopdown = true;
+  scene.add(strip);
+}
+addCoveStrip(W - 0.3, new THREE.Vector3(0, H - 0.28, 0.06), 0);
+addCoveStrip(W - 0.3, new THREE.Vector3(0, H - 0.28, D - 0.06), Math.PI);
+addCoveStrip(D - 0.3, new THREE.Vector3(-W/2 + 0.06, H - 0.28, D/2), Math.PI/2);
+addCoveStrip(D - 0.3, new THREE.Vector3(W/2 - 0.06, H - 0.28, D/2), -Math.PI/2);
+
+// ============================================================
+// CEILING VINYL + CLOCK HANDS
+// ============================================================
+const discGroup = new THREE.Group();
+discGroup.position.set(0, H - 0.3, 6.5);
+scene.add(discGroup);
+discGroup.userData.hideInTopdown = true;
+
+const disc = new THREE.Mesh(
+  new THREE.CylinderGeometry(2.4, 2.4, 0.08, 96),
+  new THREE.MeshStandardMaterial({
+    color: 0x0e081a, roughness: 0.3, metalness: 0.55,
+    envMapIntensity: 0.8,
+  })
+);
+discGroup.add(disc);
+
+// concentric grooves
+const grooveMat = new THREE.MeshBasicMaterial({
+  color: 0x6b4a8c, transparent: true, opacity: 0.4,
+});
+for (let r = 0.7; r < 2.36; r += 0.06) {
+  const ring = new THREE.Mesh(new THREE.RingGeometry(r, r + 0.005, 96), grooveMat);
+  ring.rotation.x = Math.PI/2;
+  ring.position.y = -0.041;
+  discGroup.add(ring);
+}
+// center label
+const centerLabel = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.42, 0.42, 0.082, 32), MAT.copper
+);
+discGroup.add(centerLabel);
+
+// clock hands
+const handHour = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.025, 1.0), MAT.copper);
+handHour.position.set(0.28, -0.05, 0.4);
+handHour.rotation.y = -0.7;
+discGroup.add(handHour);
+const handMin = new THREE.Mesh(
+  new THREE.BoxGeometry(0.05, 0.025, 1.5),
+  new THREE.MeshStandardMaterial({ color: 0xd2b894, roughness: 0.45, metalness: 0.5, emissive: 0x3a2e1a, emissiveIntensity: 0.6 })
+);
+handMin.position.set(0.05, -0.05, 0.7);
+handMin.rotation.y = -0.1;
+discGroup.add(handMin);
+
+// disc downlight
+const discLight = new THREE.PointLight(0xa080d0, 6.0, 14, 1.6);
+discLight.position.set(0, H - 0.45, 6.5);
+scene.add(discLight);
+
+// ============================================================
+// BAR — arc at the back
+// ============================================================
+const barGroup = new THREE.Group();
+barGroup.position.set(0, 0, 8.8);
+scene.add(barGroup);
+
+const barOuter = 3.8, barInner = 3.0, barHeight = 1.05;
+const barShape = new THREE.Shape();
+// Arc bulges into +y (2D) → -z (3D) so curve faces the room (entrance side)
+barShape.absarc(0, 0, barOuter, 0, Math.PI, false);
+barShape.lineTo(-barInner, 0);
+barShape.absarc(0, 0, barInner, Math.PI, 0, true);
+barShape.lineTo(barOuter, 0);
+const barGeo = new THREE.ExtrudeGeometry(barShape, {
+  depth: barHeight, bevelEnabled: true,
+  bevelThickness: 0.02, bevelSize: 0.02, bevelSegments: 2,
+});
+const bar = new THREE.Mesh(barGeo, MAT.woodDark);
+bar.rotation.x = -Math.PI/2;
+bar.castShadow = true; bar.receiveShadow = true;
+barGroup.add(bar);
+
+// Bar top — black marble, very reflective
+const barTopGeo = new THREE.ExtrudeGeometry(barShape, {
+  depth: 0.05, bevelEnabled: true, bevelThickness: 0.005, bevelSize: 0.005, bevelSegments: 1,
+});
+const barTop = new THREE.Mesh(barTopGeo, MAT.marble);
+barTop.rotation.x = -Math.PI/2;
+barTop.position.y = barHeight;
+barGroup.add(barTop);
+
+// LED strip under the bar's outer front
+const barLedShape = new THREE.Shape();
+barLedShape.absarc(0, 0, barOuter + 0.025, 0, Math.PI, false);
+barLedShape.lineTo(-barOuter, 0);
+barLedShape.absarc(0, 0, barOuter, Math.PI, 0, true);
+barLedShape.lineTo(barOuter + 0.025, 0);
+const barLed = new THREE.Mesh(
+  new THREE.ExtrudeGeometry(barLedShape, { depth: 0.025, bevelEnabled: false }),
+  MAT.ledStrip
+);
+barLed.rotation.x = -Math.PI/2;
+barLed.position.y = 0.45;
+barGroup.add(barLed);
+
+// Bottle wall behind the bar — straight shelves on the back wall area
+const bottleGroup = new THREE.Group();
+const bottleMats = [MAT.glassAmber, MAT.glassClear,
+  new THREE.MeshStandardMaterial({
+    color: 0x5a2818, roughness: 0.10, metalness: 0.2,
+    transparent: true, opacity: 0.85, emissive: 0x3a1a08, emissiveIntensity: 0.95,
+    envMapIntensity: 1.0,
+  })
+];
+function addBottleRow(zPos, yBase, count, xSpan, hrange) {
+  for (let i = 0; i < count; i++) {
+    const x = -xSpan + (i / (count - 1)) * xSpan * 2;
+    const h = hrange[0] + Math.random() * (hrange[1] - hrange[0]);
+    const w = 0.045 + Math.random() * 0.025;
+    const mat = bottleMats[i % 3];
+    const b = new THREE.Mesh(new THREE.CylinderGeometry(w * 0.9, w, h, 14), mat);
+    b.position.set(x, yBase + h/2, zPos);
+    b.castShadow = true;
+    bottleGroup.add(b);
+  }
+}
+// Three shelves stepped back, on a wall-mounted display 2.6m behind bar chord
+addBottleRow(2.6, 1.30, 26, 2.6, [0.22, 0.34]);
+addBottleRow(2.6, 1.75, 24, 2.5, [0.20, 0.30]);
+addBottleRow(2.6, 2.20, 22, 2.4, [0.18, 0.26]);
+// Wood shelves backing
+const shelfMat = new THREE.MeshStandardMaterial({ color: 0x100805, roughness: 0.55, metalness: 0.2, envMapIntensity: 0.55 });
+for (let y of [1.28, 1.73, 2.18, 2.55]) {
+  const shelf = new THREE.Mesh(new THREE.BoxGeometry(6.0, 0.03, 0.36), shelfMat);
+  shelf.position.set(0, y, 2.6);
+  shelf.castShadow = true; shelf.receiveShadow = true;
+  bottleGroup.add(shelf);
+}
+barGroup.add(bottleGroup);
+
+// Backlight strips: warm uplight on bottle shelves
+const bottleLight = new THREE.PointLight(0xffaa66, 10.0, 9, 1.6);
+bottleLight.position.set(0, 1.7, 2.55);
+barGroup.add(bottleLight);
+
+// Tools on bar top
+const toolMat = MAT.copper;
+function addBarTool(x, z, h, w) {
+  const t = new THREE.Mesh(new THREE.CylinderGeometry(w, w * 1.05, h, 16), toolMat);
+  t.position.set(x, barHeight + h/2, z);
+  t.castShadow = true;
+  barGroup.add(t);
+}
+addBarTool(-1.5, 0.5, 0.28, 0.06);
+addBarTool(-0.7, 0.5, 0.20, 0.07);
+addBarTool(0.0, 0.6, 0.13, 0.08);
+addBarTool(0.7, 0.5, 0.24, 0.05);
+addBarTool(1.5, 0.5, 0.22, 0.07);
+
+// Back-of-house partition
+const bohWall1 = new THREE.Mesh(new THREE.BoxGeometry(1.5, H, 0.08), MAT.wall);
+bohWall1.position.set(3.7, H/2, 11.2);
+bohWall1.castShadow = true;
+scene.add(bohWall1);
+const bohWall2 = new THREE.Mesh(new THREE.BoxGeometry(0.08, H, 2.0), MAT.wall);
+bohWall2.position.set(2.95, H/2, 11.5);
+bohWall2.castShadow = true;
+scene.add(bohWall2);
+
+// ============================================================
+// WINE CELLAR — vertical glowing case on left wall
+// ============================================================
+const cellarGroup = new THREE.Group();
+cellarGroup.position.set(-W/2 + 0.22, 0, 6);
+scene.add(cellarGroup);
+
+// case body
+const cellarBox = new THREE.Mesh(
+  new RoundedBoxGeometry(0.4, 2.0, 6.5, 4, 0.04),
+  new THREE.MeshStandardMaterial({
+    color: 0x1a0e0a, roughness: 0.35, metalness: 0.4,
+    emissive: 0x1a0808, emissiveIntensity: 0.25, envMapIntensity: 0.6,
+  })
+);
+cellarBox.position.set(0, 1.05, 0);
+cellarBox.castShadow = true;
+cellarGroup.add(cellarBox);
+
+// Glow plane on front
+const cellarGlow = new THREE.Mesh(
+  new THREE.PlaneGeometry(6.3, 1.7),
+  new THREE.MeshBasicMaterial({ color: 0xc06028, transparent: true, opacity: 0.78 })
+);
+cellarGlow.position.set(0.21, 1.05, 0);
+cellarGlow.rotation.y = Math.PI/2;
+cellarGroup.add(cellarGlow);
+
+// Bottles laying sideways in cellar (visible through "glass")
+for (let row = 0; row < 4; row++) {
+  for (let col = 0; col < 28; col++) {
+    const z = -3.0 + col * 0.22 + (row % 2 === 0 ? 0 : 0.11);
+    const y = 0.4 + row * 0.4;
+    const bot = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.05, 0.06, 0.30, 10),
+      new THREE.MeshStandardMaterial({
+        color: (row % 2 === 0) ? 0x4a2812 : 0x6b3a18,
+        roughness: 0.15, metalness: 0.15,
+        emissive: 0x4a2810, emissiveIntensity: 0.85, envMapIntensity: 0.9,
+      })
+    );
+    bot.position.set(0.16, y, z);
+    bot.rotation.z = Math.PI/2;
+    cellarGroup.add(bot);
+  }
+}
+
+// frame
+const cellarFrame = new THREE.Mesh(
+  new RoundedBoxGeometry(0.06, 2.1, 6.6, 4, 0.02), MAT.woodDark
+);
+cellarFrame.position.set(0.22, 1.05, 0);
+cellarGroup.add(cellarFrame);
+
+// lights inside the cellar — single strong warm uplight
+const cellarLight = new THREE.PointLight(0xffaa55, 8.0, 9, 1.8);
+cellarLight.position.set(0.1, 1.4, 0);
+cellarGroup.add(cellarLight);
+
+// ============================================================
+// BATHROOM ENCLOSURE
+// ============================================================
+const bathWall1 = new THREE.Mesh(new THREE.BoxGeometry(0.08, H, 1.9), MAT.wall);
+bathWall1.position.set(2.55, H/2, 0.95);
+scene.add(bathWall1);
+const bathWall2 = new THREE.Mesh(new THREE.BoxGeometry(2.05, H, 0.08), MAT.wall);
+bathWall2.position.set(3.55, H/2, 1.85);
+scene.add(bathWall2);
+const bathDiv = new THREE.Mesh(new THREE.BoxGeometry(0.06, H * 0.85, 0.9), MAT.wall);
+bathDiv.position.set(3.4, H * 0.425, 1.4);
+scene.add(bathDiv);
+
+// ============================================================
+// SPEAKERS — high-end floor stand, mid-room
+// ============================================================
+function makeSpeaker(x, z, faceTarget) {
+  const grp = new THREE.Group();
+  // body (rounded box for premium feel)
+  const body = new THREE.Mesh(
+    new RoundedBoxGeometry(0.45, 1.1, 0.38, 4, 0.04),
+    new THREE.MeshStandardMaterial({
+      color: 0x0e0608, roughness: 0.45, metalness: 0.3, envMapIntensity: 0.6,
+    })
+  );
+  body.position.y = 0.55;
+  body.castShadow = true;
+  grp.add(body);
+  // tweeter dome
+  const tweet = new THREE.Mesh(new THREE.SphereGeometry(0.055, 24, 24),
+    new THREE.MeshStandardMaterial({ color: 0x0a0608, roughness: 0.4, metalness: 0.7 }));
+  tweet.position.set(0, 0.98, 0.19);
+  grp.add(tweet);
+  // mid driver
+  const mid = new THREE.Mesh(new THREE.CircleGeometry(0.09, 32),
+    new THREE.MeshStandardMaterial({ color: 0x0a0608, roughness: 0.9 }));
+  mid.position.set(0, 0.78, 0.191);
+  grp.add(mid);
+  // woof
+  const woof = new THREE.Mesh(new THREE.CircleGeometry(0.15, 32),
+    new THREE.MeshStandardMaterial({ color: 0x0a0608, roughness: 0.9 }));
+  woof.position.set(0, 0.48, 0.191);
+  grp.add(woof);
+  // copper trim rings
+  const ringT = new THREE.Mesh(new THREE.RingGeometry(0.055, 0.068, 32), MAT.copper);
+  ringT.position.set(0, 0.98, 0.192);
+  grp.add(ringT);
+  const ringM = new THREE.Mesh(new THREE.RingGeometry(0.09, 0.105, 32), MAT.copper);
+  ringM.position.set(0, 0.78, 0.192);
+  grp.add(ringM);
+  const ringW = new THREE.Mesh(new THREE.RingGeometry(0.15, 0.17, 32), MAT.copper);
+  ringW.position.set(0, 0.48, 0.192);
+  grp.add(ringW);
+  // base
+  const base = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.13, 0.18, 0.05, 32), MAT.woodDark
+  );
+  base.position.y = 0.025;
+  base.castShadow = true;
+  grp.add(base);
+  grp.position.set(x, 0, z);
+  const target = new THREE.Vector3(faceTarget.x, 0, faceTarget.z);
+  grp.lookAt(target);
+  return grp;
+}
+const VIP_FOCUS = new THREE.Vector3(0, 0, 2.6);
+scene.add(makeSpeaker(-3.4, 6.5, VIP_FOCUS));
+scene.add(makeSpeaker(3.4, 6.5, VIP_FOCUS));
+
+// ============================================================
+// FURNITURE FACTORIES — using RoundedBoxGeometry for premium look
+// ============================================================
+function makeArmchair({ rotation = 0, position = [0,0,0], mat = MAT.leatherWarm }) {
+  const grp = new THREE.Group();
+  const baseMat = MAT.woodDark;
+  // seat cushion — rounded
+  const seat = new THREE.Mesh(new RoundedBoxGeometry(0.85, 0.16, 0.82, 4, 0.06), mat);
+  seat.position.y = 0.4;
+  seat.castShadow = true; seat.receiveShadow = true;
+  grp.add(seat);
+  // back cushion
+  const back = new THREE.Mesh(new RoundedBoxGeometry(0.85, 0.6, 0.18, 4, 0.06), mat);
+  back.position.set(0, 0.7, -0.34);
+  back.rotation.x = -0.06;
+  back.castShadow = true;
+  grp.add(back);
+  // arms
+  const armL = new THREE.Mesh(new RoundedBoxGeometry(0.12, 0.38, 0.82, 4, 0.04), mat);
+  armL.position.set(-0.365, 0.55, 0);
+  armL.castShadow = true;
+  grp.add(armL);
+  const armR = armL.clone();
+  armR.position.x = 0.365;
+  grp.add(armR);
+  // base
+  const base = new THREE.Mesh(new RoundedBoxGeometry(0.78, 0.32, 0.76, 4, 0.04), baseMat);
+  base.position.y = 0.16;
+  base.castShadow = true;
+  grp.add(base);
+  grp.position.set(...position);
+  grp.rotation.y = rotation;
+  return grp;
+}
+
+function makeTwoSofa({ rotation = 0, position = [0,0,0], mat = MAT.velvetVip, backMat = null }) {
+  const grp = new THREE.Group();
+  const back_m = backMat || mat;
+  const baseMat = MAT.woodDark;
+  const seat = new THREE.Mesh(new RoundedBoxGeometry(1.6, 0.18, 0.9, 4, 0.08), mat);
+  seat.position.y = 0.42;
+  seat.castShadow = true; seat.receiveShadow = true;
+  grp.add(seat);
+  const back = new THREE.Mesh(new RoundedBoxGeometry(1.6, 0.62, 0.18, 4, 0.06), back_m);
+  back.position.set(0, 0.73, -0.36);
+  back.rotation.x = -0.05;
+  back.castShadow = true;
+  grp.add(back);
+  const armL = new THREE.Mesh(new RoundedBoxGeometry(0.14, 0.4, 0.9, 4, 0.05), mat);
+  armL.position.set(-0.73, 0.58, 0);
+  armL.castShadow = true;
+  grp.add(armL);
+  const armR = armL.clone(); armR.position.x = 0.73; grp.add(armR);
+  const base = new THREE.Mesh(new RoundedBoxGeometry(1.52, 0.32, 0.84, 4, 0.04), baseMat);
+  base.position.y = 0.16;
+  base.castShadow = true;
+  grp.add(base);
+  grp.position.set(...position);
+  grp.rotation.y = rotation;
+  return grp;
+}
+
+function makeRoundTable({ position = [0,0,0], r = 0.32, h = 0.45 }) {
+  const grp = new THREE.Group();
+  const top = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 0.045, 48), MAT.marble);
+  top.position.y = h;
+  top.castShadow = true; top.receiveShadow = true;
+  grp.add(top);
+  const ped = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.07, h, 24), MAT.woodDark);
+  ped.position.y = h/2;
+  ped.castShadow = true;
+  grp.add(ped);
+  const baseDisc = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.025, 32), MAT.woodDark);
+  baseDisc.position.y = 0.012;
+  baseDisc.castShadow = true; baseDisc.receiveShadow = true;
+  grp.add(baseDisc);
+  grp.position.set(...position);
+  return grp;
+}
+
+function makeLamp({ position = [0,0,0], height = 0.42 }) {
+  const grp = new THREE.Group();
+  const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.02, height, 16), MAT.copper);
+  stem.position.y = height/2;
+  stem.castShadow = true;
+  grp.add(stem);
+  // shade — slightly translucent + bright emissive (for bloom)
+  const shade = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.18, 32, 1, true), MAT.lampShade);
+  shade.position.y = height + 0.085;
+  grp.add(shade);
+  // bulb inside
+  const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.045, 16, 16), MAT.lampBulb);
+  bulb.position.y = height + 0.03;
+  grp.add(bulb);
+  // Skip per-lamp PointLight — too many → exceeds shader limits on Apple Metal.
+  // The emissive shade itself provides bloom-glow.
+  grp.position.set(...position);
+  return grp;
+}
+
+function makeLounger({ rotation = 0, position = [0,0,0] }) {
+  const grp = new THREE.Group();
+  const mat = MAT.canvasGroup;
+  const baseMat = MAT.woodDark;
+  const seat = new THREE.Mesh(new RoundedBoxGeometry(1.5, 0.14, 0.82, 4, 0.06), mat);
+  seat.position.y = 0.38;
+  seat.castShadow = true; seat.receiveShadow = true;
+  grp.add(seat);
+  const back = new THREE.Mesh(new RoundedBoxGeometry(1.5, 0.5, 0.14, 4, 0.05), mat);
+  back.position.set(0, 0.65, -0.36);
+  back.rotation.x = -0.2;
+  back.castShadow = true;
+  grp.add(back);
+  const base = new THREE.Mesh(new RoundedBoxGeometry(1.42, 0.3, 0.74, 4, 0.04), baseMat);
+  base.position.y = 0.15;
+  base.castShadow = true;
+  grp.add(base);
+  const armL = new THREE.Mesh(new RoundedBoxGeometry(0.1, 0.22, 0.82, 4, 0.04), mat);
+  armL.position.set(-0.71, 0.51, 0);
+  grp.add(armL);
+  const armR = armL.clone(); armR.position.x = 0.71; grp.add(armR);
+  grp.position.set(...position);
+  grp.rotation.y = rotation;
+  return grp;
+}
+
+// ============================================================
+// SEATING LAYOUT — main hall clusters
+// ============================================================
+function placeCluster({ centerX, centerZ, rotation = 0 }) {
+  const half = 0.5;
+  const c1 = new THREE.Vector3(-half, 0, 0);
+  const c2 = new THREE.Vector3(+half, 0, 0);
+  const rot = new THREE.Matrix4().makeRotationY(rotation);
+  c1.applyMatrix4(rot); c2.applyMatrix4(rot);
+  scene.add(makeArmchair({
+    rotation: rotation + Math.PI/2,
+    position: [centerX + c1.x, 0, centerZ + c1.z],
+  }));
+  scene.add(makeArmchair({
+    rotation: rotation - Math.PI/2,
+    position: [centerX + c2.x, 0, centerZ + c2.z],
+  }));
+  scene.add(makeRoundTable({ position: [centerX, 0, centerZ], r: 0.32, h: 0.45 }));
+  scene.add(makeLamp({ position: [centerX, 0.475, centerZ], height: 0.32 }));
+}
+
+placeCluster({ centerX: -2.7, centerZ: 4.8, rotation: 0 });
+placeCluster({ centerX:  2.7, centerZ: 4.8, rotation: 0 });
+placeCluster({ centerX: -2.7, centerZ: 6.8, rotation: Math.PI/2 });
+placeCluster({ centerX:  2.7, centerZ: 6.8, rotation: -Math.PI/2 });
+placeCluster({ centerX: -1.6, centerZ: 8.4, rotation: 0 });
+placeCluster({ centerX:  1.6, centerZ: 8.4, rotation: 0 });
+placeCluster({ centerX: -2.7, centerZ: 9.5, rotation: Math.PI });
+placeCluster({ centerX:  2.7, centerZ: 9.5, rotation: Math.PI });
+
+// 2-seat sofas
+scene.add(makeTwoSofa({ rotation: Math.PI, position: [-1.6, 0, 7.5], mat: MAT.leatherWarm, backMat: MAT.leatherWarm }));
+scene.add(makeRoundTable({ position: [-1.6, 0, 6.85], r: 0.32 }));
+scene.add(makeLamp({ position: [-1.6, 0.475, 6.85], height: 0.34 }));
+scene.add(makeTwoSofa({ rotation: Math.PI, position: [1.6, 0, 7.5], mat: MAT.leatherWarm, backMat: MAT.leatherWarm }));
+scene.add(makeRoundTable({ position: [1.6, 0, 6.85], r: 0.32 }));
+scene.add(makeLamp({ position: [1.6, 0.475, 6.85], height: 0.34 }));
+
+// Loungers on perimeter
+scene.add(makeLounger({ rotation: -Math.PI/2, position: [-3.8, 0, 4.4] }));
+scene.add(makeLounger({ rotation: -Math.PI/2, position: [-3.8, 0, 5.9] }));
+scene.add(makeLounger({ rotation:  Math.PI/2, position: [ 3.8, 0, 4.4] }));
+scene.add(makeLounger({ rotation:  Math.PI/2, position: [ 3.8, 0, 5.9] }));
+
+// ============================================================
+// VIP — curved velvet sofa arrangement
+// ============================================================
+const vipGroup = new THREE.Group();
+vipGroup.position.set(0, 0, 2.6);
+scene.add(vipGroup);
+
+const vipRadius = 1.95;
+const vipSegments = 5;
+for (let i = 0; i < vipSegments; i++) {
+  const angle = -Math.PI/2 - Math.PI/3 + (i / (vipSegments - 1)) * (Math.PI * 2/3);
+  const px = Math.cos(angle) * vipRadius;
+  const pz = Math.sin(angle) * vipRadius;
+  const facing = Math.atan2(-pz, -px) + Math.PI/2;
+  const sofa = makeTwoSofa({
+    rotation: facing,
+    position: [px, 0, pz],
+    mat: MAT.velvetVip,
+    backMat: MAT.velvetVipBack,
+  });
+  sofa.scale.set(0.88, 1, 0.88);
+  vipGroup.add(sofa);
+}
+
+// VIP center table
+const vipTable = makeRoundTable({ position: [0, 0, 0], r: 0.6, h: 0.4 });
+vipGroup.add(vipTable);
+// 3 small candle-lamps on VIP table
+vipGroup.add(makeLamp({ position: [-0.25, 0.42, -0.15], height: 0.20 }));
+vipGroup.add(makeLamp({ position: [ 0.25, 0.42,  0.15], height: 0.20 }));
+vipGroup.add(makeLamp({ position: [ 0.00, 0.42,  0.30], height: 0.20 }));
+
+// VIP overhead accent — small warm spot
+const vipSpot = new THREE.SpotLight(0xffb070, 6.0, 7, Math.PI/5, 0.45, 1.5);
+vipSpot.position.set(0, H - 0.5, 2.6);
+vipSpot.target.position.set(0, 0.4, 2.6);
+vipSpot.castShadow = true;
+vipSpot.shadow.mapSize.width = 1024;
+vipSpot.shadow.mapSize.height = 1024;
+scene.add(vipSpot); scene.add(vipSpot.target);
+
+// ============================================================
+// ENTRANCE — floor logo + plants
+// ============================================================
+const logoGroup = new THREE.Group();
+logoGroup.position.set(-2.8, 0.012, 0.85);
+scene.add(logoGroup);
+function addLogoRing(r1, r2, opacity) {
+  const m = new THREE.Mesh(
+    new THREE.RingGeometry(r1, r2, 96),
+    new THREE.MeshBasicMaterial({ color: 0xC89B6C, transparent: true, opacity, side: THREE.DoubleSide })
+  );
+  m.rotation.x = -Math.PI/2;
+  logoGroup.add(m);
+}
+addLogoRing(0.45, 0.50, 0.7);
+addLogoRing(0.22, 0.24, 0.55);
+const logoDot = new THREE.Mesh(
+  new THREE.CircleGeometry(0.05, 48),
+  new THREE.MeshBasicMaterial({ color: 0xC89B6C, transparent: true, opacity: 0.85 })
+);
+logoDot.rotation.x = -Math.PI/2;
+logoGroup.add(logoDot);
+
+// Plants
+function makePlant() {
+  const grp = new THREE.Group();
+  const pot = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.22, 0.27, 0.38, 24),
+    new THREE.MeshStandardMaterial({ color: 0x180a08, roughness: 0.55, metalness: 0.1 })
+  );
+  pot.position.y = 0.19;
+  pot.castShadow = true; pot.receiveShadow = true;
+  grp.add(pot);
+  const leafMat = new THREE.MeshStandardMaterial({
+    color: 0x1f2a14, roughness: 0.6, metalness: 0.0,
+    emissive: 0x080c06, emissiveIntensity: 0.15,
+  });
+  for (let i = 0; i < 22; i++) {
+    const len = 0.45 + Math.random() * 0.5;
+    const leaf = new THREE.Mesh(new THREE.ConeGeometry(0.06, len, 7), leafMat);
+    leaf.position.set(
+      (Math.random() - 0.5) * 0.24,
+      0.38 + len/2 - 0.06,
+      (Math.random() - 0.5) * 0.24
+    );
+    leaf.rotation.x = (Math.random() - 0.5) * 0.9;
+    leaf.rotation.z = (Math.random() - 0.5) * 0.9;
+    leaf.castShadow = true;
+    grp.add(leaf);
+  }
+  return grp;
+}
+[[-4.2, 0.5], [-4.2, 1.4], [-1.5, 0.5]].forEach(([x, z]) => {
+  const p = makePlant();
+  p.position.set(x, 0, z);
+  scene.add(p);
+});
+
+// Entrance logo spotlight
+const entrySpot = new THREE.SpotLight(0xC89B6C, 4.5, 4, Math.PI/6, 0.5, 1.6);
+entrySpot.position.set(-2.8, 2.6, 0.85);
+entrySpot.target.position.set(-2.8, 0, 0.85);
+scene.add(entrySpot); scene.add(entrySpot.target);
+
+// ============================================================
+// GLOBAL LIGHTS
+// ============================================================
+// dim hemi for ambient sky/floor balance — keeps walls from going pure black
+const hemi = new THREE.HemisphereLight(0x6b4a8c, 0x1a0e08, 0.08);
+scene.add(hemi);
+
+// Cove fill — 2 lavender lights at opposite ends (reduced from 6 for perf)
+const coveLight1 = new THREE.PointLight(0x9c7ad8, 3.0, 12, 1.8);
+coveLight1.position.set(0, H - 0.18, 2);
+scene.add(coveLight1);
+const coveLight2 = new THREE.PointLight(0x9c7ad8, 3.0, 12, 1.8);
+coveLight2.position.set(0, H - 0.18, 9);
+scene.add(coveLight2);
+
+// Strong bar spotlight
+const barSpot = new THREE.SpotLight(0xffaa66, 7.0, 7, Math.PI/4.5, 0.4, 1.4);
+barSpot.position.set(0, H - 0.1, 10);
+barSpot.target.position.set(0, 0.8, 11.5);
+barSpot.castShadow = true;
+barSpot.shadow.mapSize.width = 1024;
+barSpot.shadow.mapSize.height = 1024;
+scene.add(barSpot); scene.add(barSpot.target);
+
+// Soft hall fill (very dim, just to avoid full black holes)
+const hallFill = new THREE.PointLight(0x4a3a5c, 0.6, 12, 1.5);
+hallFill.position.set(0, H - 0.5, 6.5);
+scene.add(hallFill);
+
+// ============================================================
+// VIEW PRESETS + UI
+// ============================================================
+const views = {
+  hero:     { type: 'pers', pos: [-4.2, 2.6, 0.6], look: [1.5, 0.7, 9] },
+  entrance: { type: 'pers', pos: [-2.5, 1.55, 0.8], look: [0.8, 1.2, 10] },
+  bar:      { type: 'pers', pos: [0, 1.6, 7.5], look: [0, 1.1, 12] },
+  vip:      { type: 'pers', pos: [-0.3, 1.4, 5.0], look: [0, 0.6, 2.6] },
+  hall:     { type: 'pers', pos: [-3.6, 1.75, 3.8], look: [2.5, 0.9, 8.5] },
+  cellar:   { type: 'pers', pos: [-2.2, 1.5, 6.0], look: [-4.5, 1.0, 6.0] },
+  topdown:  { type: 'ortho', size: 7.5, pos: [0, 20, D/2] },
+};
+let currentView = 'hero';
+
+function setTopdownHidden(hidden) {
+  scene.traverse(obj => {
+    if (obj.userData && obj.userData.hideInTopdown) obj.visible = !hidden;
+  });
+  // adjust bloom for topdown — punchier for visibility
+  bloomPass.strength = hidden ? 0.95 : 0.55;
+  bloomPass.threshold = hidden ? 0.55 : 0.78;
+  renderer.toneMappingExposure = hidden ? 1.8 : 1.0;
+}
+
+function applyView(name, instant = false) {
+  const v = views[name];
+  if (!v) return;
+  currentView = name;
+  if (v.type === 'ortho') {
+    activeCam = orthoCam;
+    controls.enabled = false;
+    const a = window.innerWidth / window.innerHeight;
+    orthoCam.left = -v.size * a;
+    orthoCam.right = v.size * a;
+    orthoCam.top = -v.size;
+    orthoCam.bottom = v.size;
+    orthoCam.position.set(...v.pos);
+    orthoCam.rotation.set(-Math.PI/2, 0, 0);
+    orthoCam.updateProjectionMatrix();
+    composer.passes[0].camera = orthoCam;
+    setTopdownHidden(true);
+  } else {
+    activeCam = persCam;
+    controls.enabled = true;
+    composer.passes[0].camera = persCam;
+    setTopdownHidden(false);
+    if (instant) {
+      persCam.position.set(...v.pos);
+      controls.target.set(...v.look);
+      controls.update();
+    } else {
+      const startPos = persCam.position.clone();
+      const startLook = controls.target.clone();
+      const endPos = new THREE.Vector3(...v.pos);
+      const endLook = new THREE.Vector3(...v.look);
+      const t0 = performance.now();
+      const dur = 1000;
+      function step() {
+        const t = Math.min(1, (performance.now() - t0) / dur);
+        const e = t * t * (3 - 2 * t);
+        persCam.position.lerpVectors(startPos, endPos, e);
+        controls.target.lerpVectors(startLook, endLook, e);
+        if (t < 1) requestAnimationFrame(step);
+      }
+      step();
+    }
+  }
+  document.querySelectorAll('.views button').forEach(b => {
+    b.classList.toggle('on', b.dataset.view === name);
+  });
+}
+
+document.querySelectorAll('.views button').forEach(b => {
+  b.addEventListener('click', () => applyView(b.dataset.view));
+});
+
+window.cam = {
+  setView: applyView,
+  setViewInstant(name) { applyView(name, true); },
+};
+
+applyView('hero', true);
+
+// ============================================================
+// RESIZE + RENDER LOOP
+// ============================================================
+window.addEventListener('resize', () => {
+  const a = window.innerWidth / window.innerHeight;
+  persCam.aspect = a;
+  persCam.updateProjectionMatrix();
+  const v = views[currentView];
+  if (v && v.type === 'ortho') {
+    orthoCam.left = -v.size * a;
+    orthoCam.right = v.size * a;
+    orthoCam.updateProjectionMatrix();
+  }
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  composer.setSize(window.innerWidth, window.innerHeight);
+});
+
+const clock = new THREE.Clock();
+const USE_COMPOSER = true;
+function animate() {
+  requestAnimationFrame(animate);
+  if (activeCam === persCam) controls.update();
+  const t = clock.getElapsedTime();
+  discGroup.rotation.y = t * 0.03;
+  if (USE_COMPOSER) composer.render();
+  else renderer.render(scene, activeCam);
+}
+animate();
+
+window.sceneReady = true;
+</script>
+
+</body>
+</html>
