@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>黑胶上的威士忌 · AI 实景图库 v3</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@300;400&family=Cormorant+Garamond:ital,wght@0,300;1,300&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet" />
+  <style>
+    :root { --ink-1:#0E0716; --plum:#1A0E2E; --smoke:#6B4A8C; --mist:#B8A0D8;
+      --paper:#E8DDF0; --paper-dim:#C4B5D4; --copper:#C89B6C; --rule:rgba(184,160,216,0.18); }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--ink-1); color: var(--paper);
+      font-family: "Noto Serif SC", "PingFang SC", serif; font-weight: 300; }
+    header { max-width: 1400px; margin: 0 auto; padding: 50px 6vw 24px;
+      border-bottom: 1px solid var(--rule); }
+    h1 { font-family: "Ma Shan Zheng", cursive; font-weight: 400; font-size: 42px;
+      margin: 0; letter-spacing: 0.06em; }
+    .sub { font-family: "Cormorant Garamond", serif; font-style: italic; font-size: 14px;
+      color: var(--paper-dim); letter-spacing: 0.3em; text-transform: uppercase; margin-top: 6px; }
+    .intro { max-width: 760px; margin: 18px 0 0; font-size: 14px; color: var(--paper-dim);
+      line-height: 1.75; }
+    .intro b { color: var(--copper); font-weight: 400; }
+    .grid { max-width: 1400px; margin: 0 auto; padding: 36px 6vw 80px;
+      display: grid; gap: 26px; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); }
+    @media (max-width: 540px) { .grid { grid-template-columns: 1fr; padding: 20px; } }
+    .card { background: var(--plum); border: 1px solid var(--rule);
+      border-radius: 4px; overflow: hidden; transition: transform .3s;
+      cursor: pointer; }
+    .card:hover { transform: translateY(-3px); border-color: var(--copper); }
+    .card img { width: 100%; height: auto; display: block; aspect-ratio: 16/9; object-fit: cover; }
+    .card .caption { padding: 16px 20px 20px; border-top: 1px solid var(--rule); }
+    .caption .meta { font-family: "JetBrains Mono", monospace; font-size: 10px;
+      letter-spacing: 0.18em; color: var(--copper); text-transform: uppercase; }
+    .caption h2 { font-family: "Noto Serif SC", serif; font-weight: 400; font-size: 16px;
+      margin: 4px 0 0; letter-spacing: 0.1em; color: var(--paper); }
+    .caption .desc { font-size: 12px; color: var(--paper-dim); margin: 10px 0 0; line-height: 1.65; }
+    footer { text-align: center; padding: 40px 6vw 80px; font-family: "JetBrains Mono", monospace;
+      font-size: 11px; letter-spacing: 0.2em; color: var(--paper-dim);
+      border-top: 1px solid var(--rule); max-width: 1400px; margin: 0 auto; }
+    a.back { color: var(--copper); text-decoration: none; }
+    /* lightbox */
+    .lb { position: fixed; inset: 0; background: rgba(7,4,14,0.95);
+      display: none; align-items: center; justify-content: center; z-index: 100; padding: 40px; }
+    .lb.on { display: flex; }
+    .lb img { max-width: 100%; max-height: 100%; box-shadow: 0 30px 100px rgba(0,0,0,0.7); }
+    .lb .close { position: absolute; top: 20px; right: 30px; color: var(--paper);
+      font-size: 24px; cursor: pointer; background: none; border: none; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>AI 实景图库 v3</h1>
+  <div class="sub">DENSE LAYOUT · FULL FLOOR PLAN COVERAGE · 20 IMAGES</div>
+  <p class="intro">
+    第三版 AI 实景。<b>修正</b>了之前几个问题:吧台贴住后墙、座位密度恢复到花板图水平
+    (主厅约 16-20 把扶手椅 / 8-10 组聚位)、VIP 半圆完整、酒柜墙拉满整面、
+    入口 logo 配双侧植物、卫生间 / 后厨 / 顶棚黑胶细节都有特写。
+    含 <b>9pm / 12am / 2am</b> 三档色温对照。
+  </p>
+  <p class="intro">
+    点任意一张放大看。打包 PDF 下载:<a class="back" href="../downloads/黑胶上的威士忌-AI实景v3.pdf">点这里</a>(8 MB)。
+  </p>
+</header>
+
+<div class="grid" id="grid"></div>
+
+<div class="lb" id="lb"><button class="close" id="close">×</button><img id="lbimg" src="" alt=""></div>
+
+<footer>
+  <a class="back" href="/">← 回主页</a> &nbsp;·&nbsp;
+  RENDERED BY FLUX.1 · HF PRO · 20 IMAGES · 21 MB
+</footer>
+
+<script>
+const items = [
+  ['01-floorplan-master', 'FLOOR PLAN', '俯瞰平面 · 整厅布局', '从顶上看,所有家具按花板图排布。'],
+  ['02-hero-wide', 'HERO WIDE', '入口主视图 · 进门第一眼', '从入口看进去,沙发群+吧台递进。'],
+  ['03-bar-straight', 'BAR', '吧台正面 · 贴住后墙', '圆弧吧台 + 两侧瓶墙,前景紫绒沙发。'],
+  ['04-bar-from-side', 'BAR SIDE', '吧台侧视 · 与后墙关系', '吧台顺着后墙的弧度延伸。'],
+  ['05-bar-tools-detail', 'BAR DETAIL', '调酒工作台特写', '铜色摇杯 + 大理石面 + 单杯威士忌。'],
+  ['06-hall-dense-overview', 'HALL DENSE', '主厅 · 密集聚位', '16-20 把扶手椅,8-10 组小聚位。'],
+  ['07-hall-clusters-pov', 'HALL POV', '走入主厅视角', '低视角,沙发群向远处延伸。'],
+  ['08-armchair-pair-detail', 'CLUSTER', '聚位特写 · 扶手椅对坐', '两椅一桌一灯,品牌基本单元。'],
+  ['09-solo-armchair-corner', 'SOLO', '独处区单人沙发角', '安静角落 + 一杯威士忌。'],
+  ['10-vip-semicircle', 'VIP', 'VIP 区半圆紫绒沙发', '4-5 张沙发围合 + 中央矮桌烛灯。'],
+  ['11-vip-looking-at-bar', 'VIP POV', 'VIP 视角看吧台', '坐在 VIP 沙发往吧台看,景深感强。'],
+  ['12-cellar-full-wall', 'CELLAR', '酒柜墙 · 整面发光', '左墙横向陈列,瓶后背光。'],
+  ['13-bottle-wall-detail', 'BOTTLES', '瓶墙特写', '三层瓶墙 + 铜色背光。'],
+  ['14-ceiling-vinyl-uplook', 'CEILING', '仰视顶棚黑胶', '大型唱片 + 铜色指针 + 凹陷淡紫灯带。'],
+  ['15-entrance-buffer', 'ENTRANCE', '入口缓冲带 · 地面 logo', '石面地坪 + 黄铜 logo + 双侧植物。'],
+  ['16-bathroom-corridor', 'WC', '卫生间走廊', '狭窄通道 + 淡紫凹光,与主厅声学缓冲。'],
+  ['17-speaker-sweet-spot', 'SPEAKER', '主音响 · 声学三角点', '落地式喇叭 + VIP 在三角顶。'],
+  ['18-9pm-2700K', '9PM 2700K', '9pm 温暖舒适', '开门时段,2700K 暖色基调。'],
+  ['19-12am-2200K', '12AM 2200K', '12am 更暗更沉浸', '12 点,2200K 转沉。'],
+  ['20-2am-1800K', '2AM 1800K', '2am 极暗深夜', 'After Hours,1800K 极暗。'],
+];
+const grid = document.getElementById('grid');
+for (const [f, m, t, d] of items) {
+  const c = document.createElement('div');
+  c.className = 'card';
+  c.innerHTML = `<img src="${f}.webp" alt="${t}" loading="lazy"><div class="caption"><div class="meta">${m}</div><h2>${t}</h2><p class="desc">${d}</p></div>`;
+  c.onclick = () => {
+    document.getElementById('lbimg').src = `${f}.webp`;
+    document.getElementById('lb').classList.add('on');
+  };
+  grid.appendChild(c);
+}
+document.getElementById('close').onclick = () => document.getElementById('lb').classList.remove('on');
+document.getElementById('lb').onclick = (e) => { if (e.target.id === 'lb') document.getElementById('lb').classList.remove('on'); };
+</script>
+
+</body>
+</html>
