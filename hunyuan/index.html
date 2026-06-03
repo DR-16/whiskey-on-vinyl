@@ -77,7 +77,10 @@
   <div class="sub">SPATIAL MODELS · GENERATED FROM AI IMAGES</div>
   <p class="intro">
     每个模型由 <b>Tencent Hunyuan3D-2</b>(开源 AI 3D 生成模型)从对应的 AI 实景图生成而来。
-    全部可旋转 / 缩放,在你下面任意一个 viewer 里拖动就能看。每个模型约 5-15 MB,首次加载稍慢。
+    全部可旋转 / 缩放,在下面任意一个 viewer 里拖动就能看。每个模型约 5-15 MB,首次加载稍慢。
+  </p>
+  <p class="intro">
+    <b>分两组</b>:上半部分是 <b>区域级模型</b>(整片场景);下半部分是 <b>单件家具模型</b>(每个对应花板布局中的一项,可单独导入 Blender / Sketch / Spline)。
   </p>
 </header>
 
@@ -152,6 +155,135 @@
       <div class="meta">08 · TOPDOWN</div>
       <h2>俯视沙盘 · 整间还原</h2>
       <p class="desc">整间小酒吧的微缩沙盘视图,可从任意角度查看布局。</p>
+    </div>
+  </div>
+
+</div>
+
+<div style="max-width: 1400px; margin: 60px auto 0; padding: 0 6vw; border-top: 1px solid var(--rule); padding-top: 40px;">
+  <h2 style="font-family: 'Ma Shan Zheng', cursive; font-size: 32px; margin: 0 0 6px; font-weight: 400; letter-spacing: 0.06em;">单件家具 · Individual Pieces</h2>
+  <div style="font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 13px; color: var(--paper-dim); letter-spacing: 0.3em; text-transform: uppercase;">PROP LIBRARY · POSITION ON FLOOR PLAN</div>
+</div>
+
+<div class="grid">
+
+  <div class="card">
+    <model-viewer src="armchair-leather-shape.glb" alt="扶手椅" camera-controls touch-action="pan-y" loading="eager" reveal="auto"
+      auto-rotate auto-rotate-delay="1500" rotation-per-second="20deg"
+      shadow-intensity="0.6" exposure="1.5" environment-image="neutral">
+    </model-viewer>
+    <div class="caption">
+      <div class="meta">P01 · ARMCHAIR</div>
+      <h2>暖棕皮扶手椅</h2>
+      <p class="desc">主厅独处区:8 把分布在 4 组聚位,Chesterfield 风格,深棕皮 + 铆钉。</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <model-viewer src="sofa-velvet-curved-shape.glb" alt="紫绒沙发" camera-controls touch-action="pan-y" loading="eager" reveal="auto"
+      auto-rotate auto-rotate-delay="1500" rotation-per-second="20deg"
+      shadow-intensity="0.6" exposure="1.5" environment-image="neutral">
+    </model-viewer>
+    <div class="caption">
+      <div class="meta">P02 · SOFA</div>
+      <h2>紫绒圆弧沙发</h2>
+      <p class="desc">VIP 区:4 张围合成半圆,深紫绒面,簇绒椅背,深木脚。</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <model-viewer src="table-round-marble-shape.glb" alt="圆桌" camera-controls touch-action="pan-y" loading="eager" reveal="auto"
+      auto-rotate auto-rotate-delay="1500" rotation-per-second="20deg"
+      shadow-intensity="0.6" exposure="1.5" environment-image="neutral">
+    </model-viewer>
+    <div class="caption">
+      <div class="meta">P03 · TABLE</div>
+      <h2>大理石圆桌</h2>
+      <p class="desc">每聚位中央 · VIP 中央:黑色大理石面 + 深木单柱底,约 ⌀60cm × 45cm 高。</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <model-viewer src="lamp-copper-shape.glb" alt="台灯" camera-controls touch-action="pan-y" loading="eager" reveal="auto"
+      auto-rotate auto-rotate-delay="1500" rotation-per-second="20deg"
+      shadow-intensity="0.6" exposure="1.5" environment-image="neutral">
+    </model-viewer>
+    <div class="caption">
+      <div class="meta">P04 · LAMP</div>
+      <h2>铜色暖光台灯</h2>
+      <p class="desc">每张圆桌一盏 · VIP 桌三盏:铜杆 + 米黄织物罩,2700K 暖光为主,按时段缓变。</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <model-viewer src="speaker-floor-shape.glb" alt="落地音响" camera-controls touch-action="pan-y" loading="eager" reveal="auto"
+      auto-rotate auto-rotate-delay="1500" rotation-per-second="20deg"
+      shadow-intensity="0.6" exposure="1.5" environment-image="neutral">
+    </model-viewer>
+    <div class="caption">
+      <div class="meta">P05 · SPEAKER</div>
+      <h2>落地式 hi-fi 音响</h2>
+      <p class="desc">主厅中段两侧:深木箱体 + 铜色高音/低音单元环,声轴指向 VIP 三角点。</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <model-viewer src="whiskey-bottle-shape.glb" alt="威士忌瓶" camera-controls touch-action="pan-y" loading="eager" reveal="auto"
+      auto-rotate auto-rotate-delay="1500" rotation-per-second="20deg"
+      shadow-intensity="0.6" exposure="1.5" environment-image="neutral">
+    </model-viewer>
+    <div class="caption">
+      <div class="meta">P06 · BOTTLE</div>
+      <h2>威士忌瓶</h2>
+      <p class="desc">吧台后瓶墙:50+ 个实例,3 层错落,内置暖光背光,呈现琥珀透光。</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <model-viewer src="plant-pot-shape.glb" alt="盆栽" camera-controls touch-action="pan-y" loading="eager" reveal="auto"
+      auto-rotate auto-rotate-delay="1500" rotation-per-second="20deg"
+      shadow-intensity="0.6" exposure="1.5" environment-image="neutral">
+    </model-viewer>
+    <div class="caption">
+      <div class="meta">P07 · PLANT</div>
+      <h2>盆栽</h2>
+      <p class="desc">入口缓冲带两侧 + 角落:阔叶植物,深陶盆,营造柔和过渡氛围。</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <model-viewer src="bar-stool-shape.glb" alt="高脚凳" camera-controls touch-action="pan-y" loading="eager" reveal="auto"
+      auto-rotate auto-rotate-delay="1500" rotation-per-second="20deg"
+      shadow-intensity="0.6" exposure="1.5" environment-image="neutral">
+    </model-viewer>
+    <div class="caption">
+      <div class="meta">P08 · BAR STOOL</div>
+      <h2>高脚吧凳</h2>
+      <p class="desc">备用件:你方案原本无吧凳,但单做 1-2 把放调酒师工作区可保留为后期选项。</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <model-viewer src="vinyl-record-shape.glb" alt="黑胶唱片" camera-controls touch-action="pan-y" loading="eager" reveal="auto"
+      auto-rotate auto-rotate-delay="1500" rotation-per-second="20deg"
+      shadow-intensity="0.6" exposure="1.5" environment-image="neutral">
+    </model-viewer>
+    <div class="caption">
+      <div class="meta">P09 · VINYL</div>
+      <h2>黑胶唱片</h2>
+      <p class="desc">顶棚:大尺寸悬浮装置,带铜色指针,与品牌 logo 呼应,慢转。</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <model-viewer src="rug-purple-shape.glb" alt="紫绒地毯" camera-controls touch-action="pan-y" loading="eager" reveal="auto"
+      auto-rotate auto-rotate-delay="1500" rotation-per-second="20deg"
+      shadow-intensity="0.6" exposure="1.5" environment-image="neutral">
+    </model-viewer>
+    <div class="caption">
+      <div class="meta">P10 · RUG</div>
+      <h2>圆形紫绒地毯</h2>
+      <p class="desc">每聚位下铺一张 · VIP 区铺整片:深紫绒面,与沙发呼应。</p>
     </div>
   </div>
 

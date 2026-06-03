@@ -92,8 +92,8 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.05;
+renderer.toneMapping = THREE.NoToneMapping;
+renderer.toneMappingExposure = 1.0;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 
 const aspect = window.innerWidth / window.innerHeight;
@@ -122,23 +122,30 @@ composer.addPass(new OutputPass());
 // ============================================================
 // MATERIALS — brand palette for overrides on each GLB
 // ============================================================
+// Use emissive trick so materials glow at their own color regardless of lighting
+function emi(color, baseRoughness = 0.55) {
+  return new THREE.MeshStandardMaterial({
+    color, roughness: baseRoughness, metalness: 0.0,
+    emissive: color, emissiveIntensity: 0.85,
+  });
+}
 const MAT = {
-  leatherWarm:  new THREE.MeshStandardMaterial({ color: 0x5a2818, roughness: 0.55, metalness: 0.05, envMapIntensity: 0.7 }),
-  velvetVip:    new THREE.MeshStandardMaterial({ color: 0x3a1e36, roughness: 0.78, metalness: 0.0,  envMapIntensity: 0.4 }),
-  marble:       new THREE.MeshStandardMaterial({ color: 0x12080a, roughness: 0.18, metalness: 0.45, envMapIntensity: 0.9 }),
-  brass:        new THREE.MeshStandardMaterial({ color: 0xC89B6C, roughness: 0.25, metalness: 0.85, envMapIntensity: 1.2, emissive: 0x2a1808, emissiveIntensity: 0.45 }),
-  lampShade:    new THREE.MeshStandardMaterial({ color: 0xffd29a, roughness: 0.55, metalness: 0.0,  emissive: 0xffb070, emissiveIntensity: 2.6 }),
-  woodDark:     new THREE.MeshStandardMaterial({ color: 0x180d05, roughness: 0.45, metalness: 0.25, envMapIntensity: 0.6 }),
-  glassAmber:   new THREE.MeshStandardMaterial({ color: 0x9c4818, roughness: 0.08, metalness: 0.25, transparent: true, opacity: 0.88, emissive: 0x6a2a08, emissiveIntensity: 1.1, envMapIntensity: 1.2 }),
-  ceramic:      new THREE.MeshStandardMaterial({ color: 0x180a08, roughness: 0.55, metalness: 0.1, envMapIntensity: 0.4 }),
-  leaf:         new THREE.MeshStandardMaterial({ color: 0x1f2a14, roughness: 0.65, metalness: 0.0, envMapIntensity: 0.3, emissive: 0x080c06, emissiveIntensity: 0.15 }),
-  vinyl:        new THREE.MeshStandardMaterial({ color: 0x0a0612, roughness: 0.32, metalness: 0.55, envMapIntensity: 0.8 }),
-  fabricVelvet: new THREE.MeshStandardMaterial({ color: 0x2a1230, roughness: 0.85, metalness: 0.0, envMapIntensity: 0.3 }),
-  copper:       new THREE.MeshStandardMaterial({ color: 0xC89B6C, roughness: 0.28, metalness: 0.8, envMapIntensity: 1.0, emissive: 0x2a1808, emissiveIntensity: 0.4 }),
-  wallDark:     new THREE.MeshStandardMaterial({ color: 0x110918, roughness: 0.88, metalness: 0.0 }),
-  floorWood:    new THREE.MeshStandardMaterial({ color: 0x261712, roughness: 0.78, metalness: 0.06 }),
-  floorVip:     new THREE.MeshStandardMaterial({ color: 0x150818, roughness: 0.45, metalness: 0.18 }),
-  ceilDark:     new THREE.MeshStandardMaterial({ color: 0x070410, roughness: 0.95 }),
+  leatherWarm:  emi(0xb05a30, 0.55),
+  velvetVip:    emi(0x6a2e58, 0.85),
+  marble:       emi(0x2a1820, 0.25),
+  brass:        emi(0xC89B6C, 0.25),
+  lampShade:    new THREE.MeshBasicMaterial({ color: 0xffd29a }),
+  woodDark:     emi(0x4a2a18, 0.55),
+  glassAmber:   emi(0xc06028, 0.15),
+  ceramic:      emi(0x2a1410, 0.65),
+  leaf:         emi(0x3a5028, 0.65),
+  vinyl:        emi(0x1a0e1a, 0.4),
+  fabricVelvet: emi(0x4a2a48, 0.85),
+  copper:       emi(0xC89B6C, 0.3),
+  wallDark:     emi(0x2a1638, 0.85),
+  floorWood:    emi(0x5a3826, 0.65),
+  floorVip:     emi(0x3a1a3a, 0.45),
+  ceilDark:     emi(0x12081a, 0.9),
   coveLav:      new THREE.MeshBasicMaterial({ color: 0xa080cc, transparent: true, opacity: 0.95 }),
   ledStrip:     new THREE.MeshBasicMaterial({ color: 0xffb070, transparent: true, opacity: 0.85 }),
   bulb:         new THREE.MeshBasicMaterial({ color: 0xfff0d0 }),
@@ -539,7 +546,7 @@ function buildScene() {
 // CAMERA VIEWS
 // ============================================================
 const views = {
-  hero:     { type: 'pers', pos: [-4.0, 2.4, 0.5], look: [1.5, 0.7, 9] },
+  hero:     { type: 'pers', pos: [0, 2.4, 1.5], look: [0, 0.6, 8] },
   entrance: { type: 'pers', pos: [-2.5, 1.5, 0.7], look: [0.8, 1.2, 10] },
   bar:      { type: 'pers', pos: [0, 1.6, 6.5], look: [0, 1.1, 12] },
   vip:      { type: 'pers', pos: [-0.2, 1.4, 5.5], look: [0, 0.5, 2.6] },
