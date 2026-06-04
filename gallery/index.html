@@ -3,10 +3,11 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>黑胶上的威士忌 · AI 实景图库 v3</title>
+  <title>黑胶上的威士忌 · AI 实景 + 3D 图库 v3</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@300;400&family=Cormorant+Garamond:ital,wght@0,300;1,300&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet" />
+  <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
   <style>
     :root { --ink-1:#0E0716; --plum:#1A0E2E; --smoke:#6B4A8C; --mist:#B8A0D8;
       --paper:#E8DDF0; --paper-dim:#C4B5D4; --copper:#C89B6C; --rule:rgba(184,160,216,0.18); }
@@ -23,14 +24,26 @@
       line-height: 1.75; }
     .intro b { color: var(--copper); font-weight: 400; }
     .grid { max-width: 1400px; margin: 0 auto; padding: 36px 6vw 80px;
-      display: grid; gap: 26px; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); }
+      display: grid; gap: 26px; grid-template-columns: repeat(auto-fit, minmax(440px, 1fr)); }
     @media (max-width: 540px) { .grid { grid-template-columns: 1fr; padding: 20px; } }
     .card { background: var(--plum); border: 1px solid var(--rule);
-      border-radius: 4px; overflow: hidden; transition: transform .3s;
-      cursor: pointer; }
-    .card:hover { transform: translateY(-3px); border-color: var(--copper); }
-    .card img { width: 100%; height: auto; display: block; aspect-ratio: 16/9; object-fit: cover; }
-    .card .caption { padding: 16px 20px 20px; border-top: 1px solid var(--rule); }
+      border-radius: 4px; overflow: hidden; transition: transform .3s; }
+    .card:hover { border-color: var(--copper); }
+    .tabs { display: flex; border-bottom: 1px solid var(--rule); }
+    .tab { flex: 1; padding: 8px 0; text-align: center; cursor: pointer;
+      font-family: "JetBrains Mono", monospace; font-size: 11px;
+      letter-spacing: 0.2em; color: var(--paper-dim); transition: all .25s;
+      border-bottom: 2px solid transparent; }
+    .tab.on { color: var(--copper); border-bottom-color: var(--copper); }
+    .tab:hover:not(.on) { color: var(--paper); }
+    .viewport { position: relative; aspect-ratio: 16/9; background: linear-gradient(135deg, #15092A 0%, #07040E 100%); }
+    .viewport img, .viewport model-viewer { position: absolute; inset: 0; width: 100%; height: 100%;
+      object-fit: cover; cursor: pointer; }
+    .viewport img { display: block; }
+    .viewport model-viewer { display: none; --poster-color: transparent; }
+    .card[data-mode="3d"] .viewport img { display: none; }
+    .card[data-mode="3d"] .viewport model-viewer { display: block; }
+    .caption { padding: 16px 20px 20px; border-top: 1px solid var(--rule); }
     .caption .meta { font-family: "JetBrains Mono", monospace; font-size: 10px;
       letter-spacing: 0.18em; color: var(--copper); text-transform: uppercase; }
     .caption h2 { font-family: "Noto Serif SC", serif; font-weight: 400; font-size: 16px;
@@ -52,16 +65,16 @@
 <body>
 
 <header>
-  <h1>AI 实景图库 v3</h1>
-  <div class="sub">DENSE LAYOUT · FULL FLOOR PLAN COVERAGE · 20 IMAGES</div>
+  <h1>AI 实景 + 3D 图库 v3</h1>
+  <div class="sub">20 PHOTOREALISTIC RENDERS · 20 INTERACTIVE 3D MODELS</div>
   <p class="intro">
-    第三版 AI 实景。<b>修正</b>了之前几个问题:吧台贴住后墙、座位密度恢复到花板图水平
-    (主厅约 16-20 把扶手椅 / 8-10 组聚位)、VIP 半圆完整、酒柜墙拉满整面、
-    入口 logo 配双侧植物、卫生间 / 后厨 / 顶棚黑胶细节都有特写。
-    含 <b>9pm / 12am / 2am</b> 三档色温对照。
+    每个卡片有 <b>两个标签</b>:<b>实景图</b>(AI 出的 FLUX 图)和 <b>3D 模型</b>(由 Hunyuan3D
+    从同一张图生成,可拖动)。<b>20 张 AI 图 + 20 个 3D 模型</b>,完整覆盖花板布局。
+    点图片可放大;切到 3D 标签后拖动鼠标可 360° 看。
   </p>
   <p class="intro">
-    点任意一张放大看。打包 PDF 下载:<a class="back" href="../downloads/黑胶上的威士忌-AI实景v3.pdf">点这里</a>(8 MB)。
+    📥 全图打包 PDF:<a class="back" href="../downloads/黑胶上的威士忌-AI实景v3.pdf">这里</a>(8 MB)
+    | 3D 模型 (140 MB) 已直接嵌入下方
   </p>
 </header>
 
@@ -71,7 +84,7 @@
 
 <footer>
   <a class="back" href="/">← 回主页</a> &nbsp;·&nbsp;
-  RENDERED BY FLUX.1 · HF PRO · 20 IMAGES · 21 MB
+  RENDERED BY FLUX.1 · MESHED BY HUNYUAN3D-2 · TENCENT + HF PRO
 </footer>
 
 <script>
@@ -97,12 +110,41 @@ const items = [
   ['19-12am-2200K', '12AM 2200K', '12am 更暗更沉浸', '12 点,2200K 转沉。'],
   ['20-2am-1800K', '2AM 1800K', '2am 极暗深夜', 'After Hours,1800K 极暗。'],
 ];
+
 const grid = document.getElementById('grid');
 for (const [f, m, t, d] of items) {
   const c = document.createElement('div');
   c.className = 'card';
-  c.innerHTML = `<img src="${f}.webp" alt="${t}" loading="lazy"><div class="caption"><div class="meta">${m}</div><h2>${t}</h2><p class="desc">${d}</p></div>`;
-  c.onclick = () => {
+  c.dataset.mode = 'img';
+  c.innerHTML = `
+    <div class="tabs">
+      <div class="tab on" data-mode="img">实景图</div>
+      <div class="tab" data-mode="3d">3D 模型</div>
+    </div>
+    <div class="viewport">
+      <img src="${f}.webp" alt="${t}" loading="lazy">
+      <model-viewer src="${f}.glb"
+        camera-controls touch-action="pan-y"
+        loading="lazy" reveal="auto"
+        auto-rotate auto-rotate-delay="2000" rotation-per-second="14deg"
+        shadow-intensity="0.5" exposure="1.4"
+        environment-image="${f}.webp">
+      </model-viewer>
+    </div>
+    <div class="caption">
+      <div class="meta">${m}</div>
+      <h2>${t}</h2>
+      <p class="desc">${d}</p>
+    </div>`;
+  c.querySelectorAll('.tab').forEach(tab => {
+    tab.onclick = (e) => {
+      e.stopPropagation();
+      const mode = tab.dataset.mode;
+      c.dataset.mode = mode;
+      c.querySelectorAll('.tab').forEach(t2 => t2.classList.toggle('on', t2.dataset.mode === mode));
+    };
+  });
+  c.querySelector('img').onclick = () => {
     document.getElementById('lbimg').src = `${f}.webp`;
     document.getElementById('lb').classList.add('on');
   };
