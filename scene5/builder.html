@@ -1,0 +1,128 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>builder</title></head>
+<body>
+<canvas id="c"></canvas>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
+
+const scene = new THREE.Scene();
+const loader = new GLTFLoader();
+
+const ITEMS = [
+  '01-floorplan-master', '02-hero-wide', '03-bar-straight', '04-bar-from-side',
+  '05-bar-tools-detail', '06-hall-dense-overview', '07-hall-clusters-pov',
+  '08-armchair-pair-detail', '09-solo-armchair-corner', '10-vip-semicircle',
+  '11-vip-looking-at-bar', '12-cellar-full-wall', '13-bottle-wall-detail',
+  '14-ceiling-vinyl-uplook', '15-entrance-buffer', '16-bathroom-corridor',
+  '17-speaker-sweet-spot', '18-9pm-2700K', '19-12am-2200K', '20-2am-1800K',
+];
+
+const COLS = 5;            // 5 columns × 4 rows
+const SPACING = 2.4;       // metres between centres
+const TARGET_SIZE = 1.8;   // each scene normalized to fit a 1.8m cube
+
+function normalize(obj, target) {
+  const box = new THREE.Box3().setFromObject(obj);
+  const size = box.getSize(new THREE.Vector3());
+  const maxDim = Math.max(size.x, size.y, size.z) || 1;
+  const scale = target / maxDim;
+  obj.scale.setScalar(scale);
+  const box2 = new THREE.Box3().setFromObject(obj);
+  const center = box2.getCenter(new THREE.Vector3());
+  obj.position.sub(center);
+  // lift so bottom is at y=0
+  const box3 = new THREE.Box3().setFromObject(obj);
+  obj.position.y -= box3.min.y;
+}
+
+async function loadOne(name) {
+  return new Promise((resolve, reject) => {
+    loader.load(`../gallery/${name}.glb`,
+      gltf => resolve(gltf.scene),
+      undefined,
+      err => reject(err));
+  });
+}
+
+async function buildAll() {
+  for (let i = 0; i < ITEMS.length; i++) {
+    const name = ITEMS[i];
+    try {
+      const obj = await loadOne(name);
+      normalize(obj, TARGET_SIZE);
+      const col = i % COLS;
+      const row = Math.floor(i / COLS);
+      const wrap = new THREE.Group();
+      wrap.add(obj);
+      wrap.position.set(
+        (col - (COLS - 1) / 2) * SPACING,
+        0,
+        (row - 1.5) * SPACING
+      );
+      // tag the wrapper with the item name for debugging
+      wrap.name = name;
+      scene.add(wrap);
+      // pedestal under each (a small low cylinder)
+      const ped = new THREE.Mesh(
+        new THREE.CylinderGeometry(TARGET_SIZE * 0.55, TARGET_SIZE * 0.6, 0.04, 32),
+        new THREE.MeshStandardMaterial({ color: 0x1a0e2a, roughness: 0.55, metalness: 0.4 })
+      );
+      ped.position.copy(wrap.position);
+      ped.position.y = -0.02;
+      scene.add(ped);
+      // floor label disc to help identify when viewing
+      const labelDisc = new THREE.Mesh(
+        new THREE.RingGeometry(TARGET_SIZE * 0.55, TARGET_SIZE * 0.58, 64),
+        new THREE.MeshBasicMaterial({ color: 0xC89B6C })
+      );
+      labelDisc.rotation.x = -Math.PI / 2;
+      labelDisc.position.copy(wrap.position);
+      labelDisc.position.y = 0.001;
+      scene.add(labelDisc);
+      console.log(`loaded ${i+1}/20: ${name}`);
+    } catch (e) {
+      console.error(`failed ${name}:`, e);
+    }
+  }
+
+  // Add a giant ground plane so model-viewer has shadow target
+  const ground = new THREE.Mesh(
+    new THREE.PlaneGeometry(COLS * SPACING + 4, 4 * SPACING + 4),
+    new THREE.MeshStandardMaterial({ color: 0x09060e, roughness: 0.9, metalness: 0.05 })
+  );
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.y = -0.03;
+  scene.add(ground);
+
+  console.log('all loaded. scene.children:', scene.children.length);
+  window.builtScene = scene;
+  window.readyToExport = true;
+}
+
+window.exportMerged = function () {
+  return new Promise((resolve, reject) => {
+    const exporter = new GLTFExporter();
+    exporter.parse(
+      scene,
+      result => resolve(result),
+      err => reject(err),
+      { binary: true, embedImages: true, onlyVisible: true }
+    );
+  });
+};
+
+buildAll();
+</script>
+</body>
+</html>
