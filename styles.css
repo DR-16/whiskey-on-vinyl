@@ -589,3 +589,93 @@ img { display: block; max-width: 100%; }
 @media (prefers-reduced-motion: reduce) {
   .reveal { opacity: 1; transform: none; transition: none; }
 }
+
+/* ---------- language toggle (i18n) ---------- */
+/* Hide the language-pair siblings that are not in the current mode */
+html[data-lang="zh"] [data-lang-only="en"] { display: none !important; }
+html[data-lang="en"] [data-lang-only="zh"] { display: none !important; }
+
+/* When in English, swap headline & label fonts from brush (Chinese-only)
+   to Cormorant Garamond italic — keeps the editorial tone. */
+html[data-lang="en"] body {
+  font-family: var(--serif-en);
+  letter-spacing: 0.015em;
+}
+html[data-lang="en"] .nav-brand-en {
+  font-family: var(--serif-en);
+  font-style: italic;
+  font-size: 18px;
+  letter-spacing: 0.2em;
+  text-transform: none;
+  color: var(--paper);
+  margin-top: 0;
+}
+html[data-lang="en"] .hero-title,
+html[data-lang="en"] .block-title,
+html[data-lang="en"] .room-key,
+html[data-lang="en"] .contact-list dt,
+html[data-lang="en"] .member-list li span {
+  font-family: var(--serif-en);
+  font-style: italic;
+  font-weight: 400;
+}
+html[data-lang="en"] .hero-title {
+  letter-spacing: 0.02em;
+  font-size: clamp(50px, 8vw, 96px);
+}
+html[data-lang="en"] .hero-title em { font-style: italic; color: var(--mist); }
+html[data-lang="en"] .block-title { letter-spacing: 0.02em; }
+html[data-lang="en"] .room-key { font-size: 24px; letter-spacing: 0.1em; }
+html[data-lang="en"] .contact-list dt { font-size: 18px; letter-spacing: 0.1em; }
+html[data-lang="en"] .member-list li span { font-size: 19px; min-width: 60px; }
+html[data-lang="en"] .hero-sub {
+  font-family: var(--serif-en);
+  font-style: italic;
+  font-size: 17px;
+  color: var(--paper-dim);
+  margin-bottom: 36px;
+  letter-spacing: 0.12em;
+}
+
+/* The floating pill bottom-right */
+.lang-toggle {
+  position: fixed;
+  bottom: 22px;
+  right: 22px;
+  z-index: 40;
+  display: inline-flex;
+  background: rgba(14,7,22,0.72);
+  border: 1px solid rgba(184,160,216,0.28);
+  backdrop-filter: blur(12px) saturate(140%);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  overflow: hidden;
+}
+.lang-toggle button {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 9px 14px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  color: var(--paper-dim);
+  cursor: pointer;
+  transition: color .3s ease, background-color .3s ease;
+  min-width: 44px;
+}
+.lang-toggle button + button {
+  border-left: 1px solid rgba(184,160,216,0.18);
+}
+.lang-toggle button:hover {
+  color: var(--paper);
+}
+html[data-lang="zh"] .lang-toggle button[data-set="zh"],
+html[data-lang="en"] .lang-toggle button[data-set="en"] {
+  background: var(--copper);
+  color: var(--ink-1);
+}
+@media (max-width: 480px) {
+  .lang-toggle { bottom: 16px; right: 16px; }
+  .lang-toggle button { padding: 8px 12px; font-size: 10px; min-width: 38px; }
+}
