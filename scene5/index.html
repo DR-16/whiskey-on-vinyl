@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>黑胶上的威士忌 · 20 模型大融合</title>
+  <title>黑胶上的威士忌 · 整间 3D</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@300;400&family=Cormorant+Garamond:ital,wght@0,300;1,300&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet" />
@@ -19,10 +19,10 @@
       position: fixed; top: 16px; left: 16px;
       background: rgba(14,7,22,0.78); border: 1px solid rgba(184,160,216,0.24);
       padding: 14px 18px; backdrop-filter: blur(12px);
-      z-index: 10; font-size: 13px; max-width: 360px;
+      z-index: 10; font-size: 13px; max-width: 380px;
     }
     .hud h1 {
-      margin: 0 0 4px; font-size: 20px; font-weight: 400;
+      margin: 0 0 4px; font-size: 22px; font-weight: 400;
       font-family: "Ma Shan Zheng", cursive; color: var(--paper); letter-spacing: 0.08em;
     }
     .hud .sub {
@@ -34,9 +34,24 @@
       margin: 8px 0 0; font-size: 12px; color: var(--paper-dim); line-height: 1.55;
     }
     .hud b { color: var(--copper); font-weight: 400; }
+    .scene-picker {
+      margin-top: 12px;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .scene-picker .label {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 9px; letter-spacing: 0.25em; color: var(--paper-dim); text-transform: uppercase;
+    }
+    .scene-picker select {
+      background: rgba(14,7,22,0.8); color: var(--paper);
+      border: 1px solid rgba(184,160,216,0.3);
+      padding: 8px 10px; font-family: inherit; font-size: 12px;
+      cursor: pointer; outline: none;
+    }
+    .scene-picker select:focus { border-color: var(--copper); }
     .views {
       display: flex; flex-wrap: wrap; gap: 6px;
-      margin-top: 12px;
+      margin-top: 10px;
     }
     .views button {
       background: transparent; color: var(--paper);
@@ -84,53 +99,68 @@
 <body>
 
 <div class="hud">
-  <h1>20 模型大融合</h1>
-  <div class="sub">ALL TWENTY V3 SCENES IN ONE WORLD</div>
+  <h1>黑胶上的威士忌 · 整间 3D</h1>
+  <div class="sub">FULL INTERIOR RECONSTRUCTION FROM AI</div>
   <p>
-    <b>20 个 Hunyuan3D 场景</b>已合并为 1 个交互式大场景。
-    每个模型独立摆在 5×4 网格里,每个站立在带<b>铜环</b>的底座上。
+    每个 Hunyuan 3D 模型都是同一间酒吧从一张 AI 图重建出来的"整间快照"。
+    下拉框里 6 个**完整空间还原**版本可切换 —— 选你最满意的当作"最终整间 3D"。
   </p>
-  <p>
-    拖动可绕飞 / 滚轮缩放 / 双指捏放。点下面按钮跳特定视角。
+  <p style="font-size:11px; opacity:0.7;">
+    其余 14 个偏特写 / 单元的可在
+    <a href="/gallery/" style="color:var(--copper);">单图模式</a>
+    里看。
   </p>
+
+  <div class="scene-picker">
+    <div class="label">选择整间 3D 版本</div>
+    <select id="scene-select">
+      <option value="02-hero-wide" selected>02 · 入口主视 — 整间最完整</option>
+      <option value="01-floorplan-master">01 · 俯瞰花板 — 平面视角</option>
+      <option value="06-hall-dense-overview">06 · 主厅密集 — 沙发群最多</option>
+      <option value="07-hall-clusters-pov">07 · 主厅 POV — 走入视角</option>
+      <option value="03-bar-straight">03 · 吧台为主 — 偏重吧台</option>
+      <option value="10-vip-semicircle">10 · VIP 视角 — 偏重 VIP</option>
+    </select>
+  </div>
+
   <div class="views">
-    <button data-orbit="0deg 60deg 22m" class="on">总览</button>
-    <button data-orbit="0deg 0deg 25m">俯瞰</button>
-    <button data-orbit="0deg 88deg 6m">沿排走</button>
-    <button data-orbit="45deg 65deg 12m">斜俯</button>
+    <button data-orbit="0deg 75deg 4m" class="on">主视</button>
+    <button data-orbit="90deg 70deg 4m">侧视</button>
+    <button data-orbit="0deg 0deg 5m">俯瞰</button>
+    <button data-orbit="0deg 90deg 4m">侧抬</button>
+    <button data-orbit="180deg 75deg 4m">反向</button>
   </div>
 </div>
 
-<a class="back-link" href="/gallery/">← 单图模式</a>
-<div class="info">DRAG · ORBIT &nbsp;|&nbsp; SCROLL · ZOOM &nbsp;|&nbsp; 20 SCENES MERGED · 3.5 MB COMPRESSED</div>
+<a class="back-link" href="/gallery/">← 全部 20 个</a>
+<div class="info">DRAG · ORBIT &nbsp;|&nbsp; SCROLL · ZOOM &nbsp;|&nbsp; FULL INTERIOR · 1 MODEL</div>
 
 <div class="loading-overlay" id="loader">
-  <div>LOADING MEGA SCENE …</div>
+  <div>LOADING 3D INTERIOR …</div>
   <div class="bar"><div id="bar-inner"></div></div>
   <div class="pct" id="loader-pct">0%</div>
-  <div style="font-size:9px;opacity:0.5;letter-spacing:0.2em;">DRACO COMPRESSED · 3.5 MB</div>
 </div>
 
 <model-viewer
   id="mv"
-  src="scene-grid-opt.glb"
-  alt="20 模型大融合"
+  src="../gallery/02-hero-wide.glb"
+  alt="整间 3D"
   camera-controls
   touch-action="pan-y"
   loading="eager"
   reveal="auto"
   auto-rotate
   auto-rotate-delay="3000"
-  rotation-per-second="4deg"
-  shadow-intensity="0.45"
+  rotation-per-second="6deg"
+  shadow-intensity="0.5"
   shadow-softness="0.7"
-  exposure="1.05"
+  exposure="1.4"
   tone-mapping="aces"
   environment-image="../gallery/02-hero-wide.webp"
-  camera-orbit="0deg 60deg 22m"
+  camera-orbit="0deg 75deg 4m"
   field-of-view="42deg"
-  min-camera-orbit="auto auto 3m"
-  max-camera-orbit="auto auto 60m">
+  min-camera-orbit="auto auto 1m"
+  max-camera-orbit="auto auto 15m">
 </model-viewer>
 
 <script>
@@ -138,20 +168,38 @@
   const loader = document.getElementById('loader');
   const bar = document.getElementById('bar-inner');
   const pct = document.getElementById('loader-pct');
+  const select = document.getElementById('scene-select');
+
+  function setLoading(state) {
+    if (state) {
+      loader.classList.remove('hidden');
+      bar.style.width = '0%';
+      pct.textContent = '0%';
+    } else {
+      loader.classList.add('hidden');
+    }
+  }
 
   mv.addEventListener('progress', (e) => {
     const p = Math.round(e.detail.totalProgress * 100);
     bar.style.width = p + '%';
     pct.textContent = p + '%';
-    if (p >= 100) setTimeout(() => loader.classList.add('hidden'), 400);
+    if (p >= 100) setTimeout(() => setLoading(false), 400);
   });
-  mv.addEventListener('load', () => loader.classList.add('hidden'));
+  mv.addEventListener('load', () => setLoading(false));
 
   document.querySelectorAll('.views button').forEach(b => {
     b.addEventListener('click', () => {
       mv.cameraOrbit = b.dataset.orbit;
       document.querySelectorAll('.views button').forEach(x => x.classList.toggle('on', x === b));
     });
+  });
+
+  select.addEventListener('change', () => {
+    const name = select.value;
+    setLoading(true);
+    mv.src = `../gallery/${name}.glb`;
+    mv.environmentImage = `../gallery/${name}.webp`;
   });
 </script>
 
